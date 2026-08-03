@@ -36,8 +36,16 @@ What was reused: the thinking. What was deliberately diverged:
 
 ## Architecture
 
-- **Toolchain** — TypeScript strict, no build step (`--experimental-strip-types`,
-  Node ≥ 22.6). `erasableSyntaxOnly` is load-bearing: source must stay strippable.
+- **Toolchain** — TypeScript strict, no build step *for development*
+  (`--experimental-strip-types`, Node ≥ 22.6). `erasableSyntaxOnly` is
+  load-bearing: source must stay strippable.
+- **The published package is different, and has to be.** Node refuses to strip
+  types under `node_modules` (`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`), so
+  an installed copy would not run at all. `prepack` emits `dist/` via
+  `tsconfig.build.json` and the tarball ships that. Because `erasableSyntaxOnly`
+  is on, the emit is pure type erasure — there is no transform that could change
+  a verdict. `bin/warrant-mcp.mjs` runs `dist/` when it exists and `src/` when it
+  does not, so a checkout and an install behave identically.
 - **`src/engine/`** — pure evaluation. No clock, no I/O, no network, no
   process spawning. Everything arrives as a parameter.
 - **`src/compiler/`** — the only place the Anthropic SDK is imported. The
@@ -118,7 +126,7 @@ Two hard-won lessons, both found by attacking the thing in real sessions:
 
 ## Commands
 
-- `npm test` — full suite (currently **77 tests**). New test files must be
+- `npm test` — full suite (currently **84 tests**). New test files must be
   added to the script's explicit list; discovery is deliberate, not globbed.
 - `npm run typecheck` — `tsc --noEmit`, strict.
 - `npm run policy:review` / `policy:accept` / `policy:test -- "<action>"` —
@@ -137,7 +145,10 @@ Two hard-won lessons, both found by attacking the thing in real sessions:
   test hook coverage. It is gitignored and must never ship as product code.
 - `policy-compiled.pending.json` is a transient review draft; the server and
   hook never read it.
-- Current compile: **12 clauses, 14 rules**, `claude-opus-5`, prompt v1.2.0.
+- Current compile: **12 clauses, 14 rules**, `claude-opus-5`, prompt v1.2.0. The same
+  pair is copied to `templates/` for `warrant-mcp init`; `paths.test.ts` pins that they
+  match, because the root copy is not shipped and the template is.
+- Published as **`warrant-mcp`** on npm (MIT). `warrant` was taken.
 - Remote: `github.com/rmanish2000-del/warrant-mcp` — **private**. It becomes public only
   by an explicit decision at submission, never as a side effect of a push. A full-history
   scan across all commits found no secrets before the first push; re-run it before any

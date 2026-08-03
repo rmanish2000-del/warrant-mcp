@@ -1,13 +1,45 @@
 {
   "name": "warrant-mcp",
-  "version": "0.0.0",
-  "private": true,
-  "description": "Policy firewall for agent tool calls — an MCP server that checks intended actions against a human-written, Claude-compiled, deterministically evaluated policy",
+  "version": "0.1.0",
+  "description": "A policy firewall for AI agent tool calls. Write the rules once in plain English; deterministic code refuses what they do not allow, citing the clause, and a Claude Code hook makes the refusal a hard block.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "claude-code",
+    "ai-agent",
+    "agent-security",
+    "policy",
+    "permissions",
+    "guardrails",
+    "hook"
+  ],
+  "homepage": "https://github.com/rmanish2000-del/warrant-mcp#readme",
+  "bugs": "https://github.com/rmanish2000-del/warrant-mcp/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rmanish2000-del/warrant-mcp.git"
+  },
+  "license": "MIT",
+  "author": "Manish Patel",
   "type": "module",
   "engines": {
     "node": ">=22.6"
   },
+  "bin": {
+    "warrant-mcp": "bin/warrant-mcp.mjs"
+  },
+  "files": [
+    "bin/",
+    "dist/",
+    "templates/",
+    "LICENSE",
+    "README.md",
+    "SECURITY-SURFACE.md"
+  ],
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
     "start": "node --experimental-strip-types src/server/main.ts",
     "policy:review": "node --experimental-strip-types --env-file-if-exists=.env src/cli/authoring.ts review",
     "policy:accept": "node --experimental-strip-types src/cli/authoring.ts accept",
@@ -18,7 +50,7 @@
     "demo:reset": "node --experimental-strip-types src/cli/stage.ts reset",
     "demo:check": "node --experimental-strip-types src/cli/stage.ts check",
     "demo:permit": "node --experimental-strip-types src/cli/stage.ts permit",
-    "test": "node --experimental-strip-types --test src/engine/evaluate.test.ts src/compiler/schema.test.ts src/hook/adapter.test.ts src/authoring/authoring.test.ts src/server/guard.test.ts src/server/cache.test.ts",
+    "test": "node --experimental-strip-types --test src/engine/evaluate.test.ts src/compiler/schema.test.ts src/hook/adapter.test.ts src/authoring/authoring.test.ts src/config/paths.test.ts src/server/guard.test.ts src/server/cache.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

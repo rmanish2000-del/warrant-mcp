@@ -28,11 +28,31 @@ import { describeRule } from '../authoring/describe.ts';
 import { behaviourDiff, refusedByPolicy } from '../authoring/diff.ts';
 import { guidanceFor } from '../authoring/guidance.ts';
 import { isPhraseError, parsePhrase } from '../authoring/phrase.ts';
+import {
+  noPolicyMessage,
+  projectPolicyCompiled,
+  projectPolicyPending,
+  projectPolicySource,
+  resolvePolicy,
+} from '../config/paths.ts';
 import type { CompiledPolicy, EvaluationContext } from '../engine/types.ts';
 
-const POLICY_PATH = fileURLToPath(new URL('../../policy.md', import.meta.url));
+/**
+ * Where this project's policy lives. A project that has run `warrant-mcp init`
+ * owns a `.warrant/` directory and everything happens there; a source checkout
+ * of this repository has no `.warrant/`, so the repo's own files are used and
+ * `npm run policy:review` behaves exactly as it always has.
+ */
+const usingProjectDir = existsSync(projectPolicySource(process.cwd()));
+const POLICY_PATH = usingProjectDir
+  ? projectPolicySource(process.cwd())
+  : fileURLToPath(new URL('../../policy.md', import.meta.url));
 /** The reviewed-but-not-active draft. The server and the hook never read this file. */
-const PENDING_PATH = fileURLToPath(new URL('../../policy-compiled.pending.json', import.meta.url));
+const PENDING_PATH = usingProjectDir
+  ? projectPolicyPending(process.cwd())
+  : fileURLToPath(new URL('../../policy-compiled.pending.json', import.meta.url));
+/** The policy that is actually enforced once a draft is accepted. */
+const ACTIVE_PATH = usingProjectDir ? projectPolicyCompiled(process.cwd()) : CACHE_PATH;
 
 const out = (text = '') => process.stdout.write(`${text}\n`);
 const BOLD = '\x1b[1m';
@@ -148,7 +168,7 @@ async function review(): Promise<number> {
   out(paint(BOLD, `  COMPILED — ${compiled.clauses.length} clauses, ${compiled.rules.length} rules, by ${result.model}.`));
   showPolicy(compiled);
 
-  const active = readPolicyCache();
+  const active = existsSync(ACTIVE_PATH) ? readPolicyCache(ACTIVE_PATH) : null;
   if (active) showDiff(active.compiled, compiled);
   else showFirstPolicy(compiled);
 
@@ -181,10 +201,10 @@ async function review(): Promise<number> {
     out(`  ${paint(BOLD, 'REFUSED')} — the active policy is unchanged. Draft kept at ${PENDING_PATH}.`);
     return 0;
   }
-  copyFileSync(PENDING_PATH, CACHE_PATH);
+  copyFileSync(PENDING_PATH, ACTIVE_PATH);
   rmSync(PENDING_PATH, { force: true });
   out();
-  out(`  ${paint(GREEN + BOLD, 'ACCEPTED')} — written to ${CACHE_PATH}.`);
+  out(`  ${paint(GREEN + BOLD, 'ACCEPTED')} — written to ${ACTIVE_PATH}.`);
   out('  Commit it, then npm run demo:reset to load it into the sandbox vault.');
   return 0;
 }
@@ -200,9 +220,9 @@ function accept(): number {
     out(`${PENDING_PATH} did not validate — refusing to adopt it.`);
     return 1;
   }
-  copyFileSync(PENDING_PATH, CACHE_PATH);
+  copyFileSync(PENDING_PATH, ACTIVE_PATH);
   rmSync(PENDING_PATH, { force: true });
-  out(`ACCEPTED — ${CACHE_PATH} now holds the reviewed policy (compiled ${draft.compiledAt}). Nothing was compiled.`);
+  out(`ACCEPTED — ${ACTIVE_PATH} now holds the reviewed policy (compiled ${draft.compiledAt}). Nothing was compiled.`);
   out('Commit it, then npm run demo:reset to load it into the sandbox vault.');
   return 0;
 }
@@ -216,10 +236,13 @@ function test(argv: readonly string[]): number {
     return 2;
   }
 
-  const path = usePending ? PENDING_PATH : CACHE_PATH;
+  // The active policy is located by the same rule the server and hook use, so a
+  // dry run can never test something other than what would be enforced.
+  const path = usePending ? PENDING_PATH : (resolvePolicy(process.cwd(), process.env)?.path ?? ACTIVE_PATH);
   const cached = existsSync(path) ? readPolicyCache(path) : null;
   if (!cached) {
-    out(`No ${usePending ? 'pending draft' : 'active policy'} at ${path}.`);
+    if (usePending) out(`No pending draft at ${path}. Run "warrant-mcp review" first.`);
+    else out(noPolicyMessage(process.cwd()));
     return 1;
   }
 

@@ -11,6 +11,42 @@ No payments, no escalation, no UI. This reuses the thinking of
 [warrant](https://github.com/rmanish2000-del/warrant) (the deterministic
 authorization engine for agentic commerce); it does not fork it.
 
+## Install
+
+```bash
+npm install -g warrant-mcp
+cd your-project
+warrant-mcp init
+```
+
+`init` writes `.warrant/` — a starter policy in plain English and its compiled
+clauses — and prints the MCP and hook configuration to paste. It copies; it
+never compiles, so a fresh install enforces immediately with no API key.
+
+Then see what it would refuse, without enforcing anything:
+
+```bash
+warrant-mcp test "delete .env"
+warrant-mcp test "shell rm -rf build"
+warrant-mcp test "http GET https://example.com"
+```
+
+`npx warrant-mcp init` works too. Requires Node ≥ 22.6.
+
+**Where an installed instance looks for your policy**, in order:
+
+1. `WARRANT_MCP_POLICY` — an absolute path. `init` writes this into both
+   generated configs, so a client that spawns the server from an arbitrary
+   directory still finds the right policy.
+2. `<cwd>/.warrant/policy-compiled.json` — the project convention.
+3. `<package>/policy-compiled.json` — present only in a source checkout of this
+   repository. It is deliberately **not** shipped in the tarball, so an
+   installed copy can never silently enforce the sample policy; the sample
+   ships under `templates/` and only `init` copies it.
+
+If none resolve, the server refuses to start and the hook denies. A missing
+policy is a refusal, never a pass.
+
 ## The one structural rule
 
 > Claude compiles policy and explains nothing at runtime. **Deterministic code

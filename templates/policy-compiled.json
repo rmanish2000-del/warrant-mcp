@@ -1,0 +1,280 @@
+{
+  "policyText": "# warrant-mcp policy\n\nWritten by a human, in the words a human would use. Claude compiles it into\nnumbered clauses (`npm run policy:fresh`), a human reviews the compiled\noutput, and deterministic code enforces it. Editing this file changes nothing\nuntil it is recompiled and the compiled cache is reviewed and committed.\n\n\"The project\" means the directory the agent is working in; the system stamps\nthat at startup, so this file never names a machine path.\n\n1. Stay inside the project — don't create, change or delete anything outside\n   it.\n2. Leave my .env alone, and don't touch anything in .git.\n3. Never run anything as root: no sudo, no su.\n4. Never do a recursive force delete — no rm -rf, however it is spelled.\n5. Don't pipe anything you downloaded straight into a shell.\n6. The only hosts you may reach are api.github.com and registry.npmjs.org.\n7. Only GET and HEAD requests — don't send our data out.\n8. Never force-push — not with --force, not with -f, not with\n   --force-with-lease.\n9. Never rewrite history: no git rebase, no git commit --amend, no git reset\n   --hard.\n10. Don't push straight to main or master.\n11. Don't install new dependencies with npm — no npm install, no npm i, no\n    npm add.\n12. Never touch private keys or certificates — anything ending in .pem or\n    .key.\n\n> Sentences 8, 9 and 11 name their commands and flags on purpose. Written as\n> \"never rewrite history\" and \"don't install anything\", the compiler refused\n> the whole policy — correctly, because neither can be enumerated from the\n> words alone, and guessing would be the compiler inventing authority. Naming\n> them is the human's job, and the refusal is what prompts it.\n",
+  "compiled": {
+    "clauses": [
+      {
+        "id": "W1",
+        "text": "Do not create, modify or delete anything outside the project directory."
+      },
+      {
+        "id": "W2",
+        "text": "Do not touch the .env file or anything inside the .git directory."
+      },
+      {
+        "id": "W3",
+        "text": "Never run commands as root via sudo or su."
+      },
+      {
+        "id": "W4",
+        "text": "Never perform a recursive force delete such as rm -rf, in any spelling."
+      },
+      {
+        "id": "W5",
+        "text": "Do not pipe downloaded content directly into a shell."
+      },
+      {
+        "id": "W6",
+        "text": "The only hosts the agent may reach are api.github.com and registry.npmjs.org."
+      },
+      {
+        "id": "W7",
+        "text": "Only GET and HEAD HTTP requests are permitted."
+      },
+      {
+        "id": "W8",
+        "text": "Never force-push, whether with --force, -f, or --force-with-lease."
+      },
+      {
+        "id": "W9",
+        "text": "Never rewrite history: no git rebase, no git commit --amend, no git reset --hard."
+      },
+      {
+        "id": "W10",
+        "text": "Do not push directly to the main or master branch."
+      },
+      {
+        "id": "W11",
+        "text": "Do not install new dependencies with npm: no npm install, no npm i, no npm add."
+      },
+      {
+        "id": "W12",
+        "text": "Never touch private keys or certificates — any file ending in .pem or .key."
+      }
+    ],
+    "rules": [
+      {
+        "clause": "W1",
+        "rule": {
+          "type": "file_delete_outside_workspace"
+        }
+      },
+      {
+        "clause": "W2",
+        "rule": {
+          "type": "file_delete_protected",
+          "segments": [
+            ".git"
+          ],
+          "basenames": [
+            ".env"
+          ],
+          "suffixes": []
+        }
+      },
+      {
+        "clause": "W3",
+        "rule": {
+          "type": "shell_forbidden_token",
+          "tokens": [
+            "sudo",
+            "su"
+          ]
+        }
+      },
+      {
+        "clause": "W4",
+        "rule": {
+          "type": "shell_forbidden_sequence",
+          "sequences": [
+            [
+              "rm",
+              "-rf"
+            ],
+            [
+              "rm",
+              "-fr"
+            ],
+            [
+              "rm",
+              "-Rf"
+            ],
+            [
+              "rm",
+              "-fR"
+            ],
+            [
+              "rm",
+              "-r",
+              "-f"
+            ],
+            [
+              "rm",
+              "-f",
+              "-r"
+            ],
+            [
+              "rm",
+              "-R",
+              "-f"
+            ],
+            [
+              "rm",
+              "-f",
+              "-R"
+            ],
+            [
+              "rm",
+              "--recursive",
+              "--force"
+            ],
+            [
+              "rm",
+              "--force",
+              "--recursive"
+            ]
+          ]
+        }
+      },
+      {
+        "clause": "W5",
+        "rule": {
+          "type": "shell_forbidden_sequence",
+          "sequences": [
+            [
+              "|",
+              "sh"
+            ],
+            [
+              "|",
+              "bash"
+            ],
+            [
+              "|",
+              "zsh"
+            ]
+          ]
+        }
+      },
+      {
+        "clause": "W6",
+        "rule": {
+          "type": "http_host_allowlist",
+          "hosts": [
+            "api.github.com",
+            "registry.npmjs.org"
+          ]
+        }
+      },
+      {
+        "clause": "W7",
+        "rule": {
+          "type": "http_method_allowlist",
+          "methods": [
+            "GET",
+            "HEAD"
+          ]
+        }
+      },
+      {
+        "clause": "W8",
+        "rule": {
+          "type": "shell_forbidden_invocation",
+          "command": "git",
+          "subcommands": [
+            "push"
+          ],
+          "anyFlag": [
+            "--force",
+            "-f",
+            "--force-with-lease"
+          ],
+          "anyArgument": []
+        }
+      },
+      {
+        "clause": "W9",
+        "rule": {
+          "type": "shell_forbidden_invocation",
+          "command": "git",
+          "subcommands": [
+            "rebase"
+          ],
+          "anyFlag": [],
+          "anyArgument": []
+        }
+      },
+      {
+        "clause": "W9",
+        "rule": {
+          "type": "shell_forbidden_invocation",
+          "command": "git",
+          "subcommands": [
+            "commit"
+          ],
+          "anyFlag": [
+            "--amend"
+          ],
+          "anyArgument": []
+        }
+      },
+      {
+        "clause": "W9",
+        "rule": {
+          "type": "shell_forbidden_invocation",
+          "command": "git",
+          "subcommands": [
+            "reset"
+          ],
+          "anyFlag": [
+            "--hard"
+          ],
+          "anyArgument": []
+        }
+      },
+      {
+        "clause": "W10",
+        "rule": {
+          "type": "shell_forbidden_invocation",
+          "command": "git",
+          "subcommands": [
+            "push"
+          ],
+          "anyFlag": [],
+          "anyArgument": [
+            "main",
+            "master"
+          ]
+        }
+      },
+      {
+        "clause": "W11",
+        "rule": {
+          "type": "shell_forbidden_invocation",
+          "command": "npm",
+          "subcommands": [
+            "install",
+            "i",
+            "add"
+          ],
+          "anyFlag": [],
+          "anyArgument": []
+        }
+      },
+      {
+        "clause": "W12",
+        "rule": {
+          "type": "file_delete_protected",
+          "segments": [],
+          "basenames": [],
+          "suffixes": [
+            ".pem",
+            ".key"
+          ]
+        }
+      }
+    ]
+  },
+  "model": "claude-opus-5",
+  "promptVersion": "1.2.0",
+  "compiledAt": "2026-08-03T17:37:06.475Z"
+}

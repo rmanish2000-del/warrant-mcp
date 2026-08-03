@@ -36,3 +36,7 @@ attack-fixtures/
 
 # Reviewed-but-not-accepted draft. Transient; the hook never reads it.
 policy-compiled.pending.json
+
+# Compiled output for the npm package. Built by prepack; never committed.
+dist/
+*.tgz

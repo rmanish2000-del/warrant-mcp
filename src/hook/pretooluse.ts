@@ -18,7 +18,8 @@
  * Offline by construction: cached policy from disk, no network, no API.
  */
 import process from 'node:process';
-import { CACHE_PATH, readPolicyCache } from '../compiler/cache.ts';
+import { readPolicyCache } from '../compiler/cache.ts';
+import { noPolicyMessage, resolvePolicy } from '../config/paths.ts';
 import { decideToolCall, denyHookOutput } from './adapter.ts';
 import { renderOutcome } from '../server/present.ts';
 import type { EvaluationContext } from '../engine/types.ts';
@@ -46,9 +47,16 @@ try {
   throw cause; // unreachable; satisfies control flow
 }
 
+// The session's own directory decides which project's policy applies, so a
+// hook shared across projects still enforces the right one.
+const sessionCwd = typeof input.cwd === 'string' ? input.cwd : process.cwd();
+const located = resolvePolicy(sessionCwd, process.env);
+if (located === null) {
+  deny(`warrant-mcp: refusing the tool call — ${noPolicyMessage(sessionCwd)}\nFail closed.`);
+}
 const cached = (() => {
   try {
-    return readPolicyCache(process.env.WARRANT_MCP_POLICY ?? CACHE_PATH);
+    return readPolicyCache(located!.path);
   } catch (cause) {
     return deny(`warrant-mcp: refusing the tool call — the compiled policy failed validation (${(cause as Error).message}). Fail closed.`);
   }
@@ -56,15 +64,14 @@ const cached = (() => {
 const policyCache =
   cached === null
     ? deny(
-        `warrant-mcp: refusing the tool call — no compiled policy at ${process.env.WARRANT_MCP_POLICY ?? CACHE_PATH}. ` +
-          'The hook never compiles. Run "npm run policy:fresh" in warrant-mcp, review it, and retry. Fail closed.',
+        `warrant-mcp: refusing the tool call — no compiled policy at ${located!.path}. ` +
+          'The hook never compiles. Run "warrant-mcp init", review it, and retry. Fail closed.',
       )
     : cached;
 
 const toolName = typeof input.tool_name === 'string' ? input.tool_name : '';
-const cwd = typeof input.cwd === 'string' ? input.cwd : process.cwd();
 const ctx: EvaluationContext = {
-  workspaceRoot: process.env.WARRANT_MCP_WORKSPACE ?? cwd,
+  workspaceRoot: process.env.WARRANT_MCP_WORKSPACE ?? sessionCwd,
   caseInsensitivePaths: process.platform === 'win32',
 };
 
