@@ -5,8 +5,9 @@
  * unchanged M1 engine via handleCheckAction — this module only translates.
  *
  * Mapping:
- * - Bash            → one shell_command check for the whole command, plus a
- *                     file_delete check per path an rm-family command deletes,
+ * - Bash/PowerShell → one shell_command check for the whole command, plus a
+ *                     file_delete check per path a deleter command removes
+ *                     (rm family and the PowerShell Remove-Item family),
  *                     plus a file_delete check per redirect target (`> file`
  *                     overwrites — destructive to existing content).
  * - Write/Edit/
@@ -28,7 +29,14 @@ export interface MappedCheck {
   readonly action: unknown;
 }
 
-const DELETERS = new Set(['rm', 'rimraf', 'unlink']);
+/**
+ * Command words that delete their path arguments. Covers the Bash spellings
+ * and the PowerShell cmdlet + aliases: the M3 rehearsal caught the model
+ * deleting a protected file via the PowerShell tool, which the first cut of
+ * this adapter did not map at all — the hook never fired. Extraction errs
+ * toward checking too much (a checked path that is allowed stays allowed).
+ */
+const DELETERS = new Set(['rm', 'rimraf', 'unlink', 'remove-item', 'del', 'ri', 'erase', 'rd', 'rmdir']);
 const COMMAND_SEPARATORS = new Set([';', '&&', '||', '|', '&']);
 /** Redirect targets that are sinks, not files — never treated as writes. */
 const NULL_SINKS = new Set(['/dev/null', 'nul']);
@@ -112,7 +120,7 @@ const FILE_TOOL_PATH_FIELDS: Readonly<Record<string, string>> = {
 export function mapToolCall(toolName: string, toolInput: unknown): MappedCheck[] {
   const input =
     typeof toolInput === 'object' && toolInput !== null ? (toolInput as Record<string, unknown>) : {};
-  if (toolName === 'Bash') {
+  if (toolName === 'Bash' || toolName === 'PowerShell') {
     const command = typeof input.command === 'string' ? input.command : '';
     return bashChecks(toolName, command);
   }

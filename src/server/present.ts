@@ -17,6 +17,25 @@ const OFF = '\x1b[0m';
 
 const WIDTH = 64;
 const RULE = '─'.repeat(WIDTH);
+/** Content width for wrapped lines: 3-space indent + 60 ≤ 64, so every banner line fits an 80-column terminal. */
+const WRAP = 60;
+
+/** Greedy word wrap. A single token longer than the width stays on its own line. */
+function wrapText(text: string, width: number): string[] {
+  const words = text.split(/\s+/).filter((word) => word.length > 0);
+  const lines: string[] = [];
+  let line = '';
+  for (const word of words) {
+    if (line.length === 0) line = word;
+    else if (line.length + 1 + word.length <= width) line += ` ${word}`;
+    else {
+      lines.push(line);
+      line = word;
+    }
+  }
+  if (line.length > 0) lines.push(line);
+  return lines;
+}
 
 /** Describe the requested action in one short line per field. */
 function describeRequest(requested: unknown): string[] {
@@ -36,21 +55,27 @@ export function renderOutcome(outcome: CheckOutcome, color: boolean): string {
   if (outcome.verdict.decision === 'ALLOW') {
     lines.push(`   ${paint(BOLD + GREEN, 'ALLOW')}`);
     lines.push('');
-    for (const line of describeRequest(outcome.requested)) lines.push(`   ${line}`);
+    for (const entry of describeRequest(outcome.requested)) {
+      for (const line of wrapText(entry, WRAP)) lines.push(`   ${line}`);
+    }
     lines.push('');
-    lines.push(`   ${outcome.sentence}`);
+    for (const line of wrapText(outcome.sentence, WRAP)) lines.push(`   ${line}`);
   } else {
     const clause = outcome.verdict.clause;
     lines.push(`   ${paint(BOLD + RED, 'DENY')}${clause ? paint(DIM, `   ·   clause ${clause}`) : ''}`);
     lines.push('');
     if (clause && outcome.clauseText) {
-      lines.push(`   ${paint(BOLD, `${clause} — ${outcome.clauseText}`)}`);
+      for (const line of wrapText(`${clause} — ${outcome.clauseText}`, WRAP)) {
+        lines.push(`   ${paint(BOLD, line)}`);
+      }
       lines.push('');
     }
     lines.push(`   ${paint(DIM, 'refused:')}`);
-    for (const line of describeRequest(outcome.requested)) lines.push(`      ${line}`);
+    for (const entry of describeRequest(outcome.requested)) {
+      for (const line of wrapText(entry, WRAP - 3)) lines.push(`      ${line}`);
+    }
     lines.push('');
-    lines.push(`   ${outcome.sentence}`);
+    for (const line of wrapText(outcome.sentence, WRAP)) lines.push(`   ${line}`);
     lines.push('');
     lines.push(`   ${paint(DIM, 'The action was not performed.')}`);
   }

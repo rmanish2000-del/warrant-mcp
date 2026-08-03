@@ -12,6 +12,9 @@
     "policy:fresh": "node --experimental-strip-types --env-file-if-exists=.env src/cli/compile.ts fresh",
     "policy:show": "node --experimental-strip-types src/cli/compile.ts show",
     "demo": "node --experimental-strip-types src/cli/demo.ts",
+    "demo:reset": "node --experimental-strip-types src/cli/stage.ts reset",
+    "demo:check": "node --experimental-strip-types src/cli/stage.ts check",
+    "demo:permit": "node --experimental-strip-types src/cli/stage.ts permit",
     "test": "node --experimental-strip-types --test src/engine/evaluate.test.ts src/compiler/schema.test.ts src/hook/adapter.test.ts src/server/guard.test.ts src/server/cache.test.ts",
     "typecheck": "tsc --noEmit"
   },

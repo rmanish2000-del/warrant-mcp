@@ -86,6 +86,20 @@ test('harmless calls produce no opinion — null, never an approval', () => {
   assert.equal(decide('Read', { file_path: '.env' }), null);
 });
 
+test('PowerShell deletions map like Bash — the rehearsal bypass stays closed', () => {
+  const checks = mapToolCall('PowerShell', {
+    command: 'Remove-Item -Force -Confirm:$false "C:\\stage\\.env"',
+  });
+  assert.deepEqual(
+    checks.map((c) => c.action).filter((a) => (a as { kind: string }).kind === 'file_delete'),
+    [{ kind: 'file_delete', path: 'C:\\stage\\.env' }],
+  );
+  const denied = decide('PowerShell', { command: 'Remove-Item -Force .env' });
+  assert.ok(denied);
+  assert.equal(denied.verdict.clause, 'W2');
+  assert.equal(decide('PowerShell', { command: 'Get-ChildItem' }), null);
+});
+
 test('denyHookOutput emits the documented PreToolUse deny shape', () => {
   assert.deepEqual(denyHookOutput('because'), {
     hookSpecificOutput: {

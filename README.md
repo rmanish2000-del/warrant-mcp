@@ -112,7 +112,7 @@ Wire it into any project's `.claude/settings.json`:
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|Write|Edit|MultiEdit|NotebookEdit",
+        "matcher": "Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit",
         "hooks": [
           {
             "type": "command",
@@ -134,9 +134,13 @@ How tool calls map onto the engine (adapter in
 [src/hook/adapter.ts](src/hook/adapter.ts); evaluation is the unchanged M1
 engine):
 
-- **Bash** — the whole command is checked as `shell_command`; additionally,
-  every path an `rm`-family command deletes and every `>`/`>>` redirect
-  target is checked as `file_delete` (an overwrite destroys what was there).
+- **Bash / PowerShell** — the whole command is checked as `shell_command`;
+  additionally, every path a deleter command removes (`rm` family and the
+  PowerShell `Remove-Item` family) and every `>`/`>>` redirect target is
+  checked as `file_delete` (an overwrite destroys what was there). PowerShell
+  coverage exists because an M3 rehearsal caught the model deleting a
+  protected file through the unmatched PowerShell tool — match every shell
+  your client exposes.
 - **Write / Edit / MultiEdit / NotebookEdit** — the target path is checked as
   `file_delete` under the destructive-file-operation clauses (W1/W2 are
   worded "create, overwrite, or delete" for exactly this reason).
@@ -163,6 +167,9 @@ is a file copy, so no demo path ever compiles.
   every source file strippable.
 - `npm run demo` — the canonical checks through the real handler and cache,
   verdict banners on the terminal. No API call, no side effects.
+- `npm run demo:reset` / `demo:check` / `demo:permit` — stage-demo management
+  (rebuild the sandbox pristine / one-line READY verification / activate the
+  pre-compiled v2 policy). Fully offline; see [DEMO-CARD.md](DEMO-CARD.md).
 - `npm run policy:fresh` / `npm run policy:show` — live compile (explicit,
   key required) / print the cache (never compiles).
 - `npm start` — the MCP server on stdio (normally spawned by the client, not
