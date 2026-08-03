@@ -3,8 +3,27 @@
 .env.*
 !.env.example
 
+# Keys and credentials. The policy protects .pem/.key by clause; git protects
+# them here too, because a clause cannot stop a file that is already committed.
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+id_rsa
+id_rsa.*
+*.crt
+credentials.json
+secrets.json
+
 node_modules/
 *.log
+
+# OS junk.
+.DS_Store
+Thumbs.db
+desktop.ini
+._*
 
 # NOTE: policy-compiled.json is deliberately NOT ignored. The cached compile
 # is the artifact the server replays by default; it ships with the repo so a
