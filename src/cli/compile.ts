@@ -18,7 +18,10 @@ import { CACHE_PATH, readPolicyCache, writePolicyCache } from '../compiler/cache
 import type { CachedPolicy } from '../compiler/cache.ts';
 import { CompilerRejection } from '../compiler/schema.ts';
 
-const POLICY_PATH = fileURLToPath(new URL('../../policy.md', import.meta.url));
+/** Defaults compile the canonical policy; `fresh <policy.md> <out.json>` compiles a variant (e.g. the demo's v2). */
+const DEFAULT_POLICY_PATH = fileURLToPath(new URL('../../policy.md', import.meta.url));
+const POLICY_PATH = process.argv[3] ?? DEFAULT_POLICY_PATH;
+const OUT_PATH = process.argv[4] ?? CACHE_PATH;
 
 const out = (text: string) => process.stdout.write(text);
 
@@ -83,19 +86,19 @@ async function fresh(): Promise<number> {
     promptVersion: result.promptVersion,
     compiledAt: new Date().toISOString(),
   };
-  writePolicyCache(cache);
-  banner(COLOR.green, [`LIVE COMPILE — served by ${result.model}, cached to ${CACHE_PATH}`]);
+  writePolicyCache(cache, OUT_PATH);
+  banner(COLOR.green, [`LIVE COMPILE — served by ${result.model}, cached to ${OUT_PATH}`]);
   describe(cache);
   out('Review the clauses above. The server replays this cache; it never compiles.\n');
   return 0;
 }
 
 function show(): number {
-  const cached = readPolicyCache();
+  const cached = readPolicyCache(OUT_PATH);
   if (!cached) {
     banner(COLOR.red, [
       'NO CACHED COMPILE',
-      `${CACHE_PATH} does not exist. policy:show NEVER compiles.`,
+      `${OUT_PATH} does not exist. policy:show NEVER compiles.`,
       'Run "npm run policy:fresh" once, review it, then use show/start freely.',
     ]);
     return 1;

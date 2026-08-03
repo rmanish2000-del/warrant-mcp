@@ -74,7 +74,7 @@ export const POLICY_JSON_SCHEMA = {
                 additionalProperties: false,
                 required: ['type'],
                 properties: { type: { const: 'file_delete_outside_workspace' } },
-                description: 'Deletion outside the workspace is refused. Carries no path — the system stamps the workspace at runtime.',
+                description: 'A destructive file operation (delete, overwrite, create) outside the workspace is refused. Carries no path — the system stamps the workspace at runtime.',
               },
               {
                 type: 'object',
@@ -82,8 +82,8 @@ export const POLICY_JSON_SCHEMA = {
                 required: ['type', 'segments', 'basenames'],
                 properties: {
                   type: { const: 'file_delete_protected' },
-                  segments: { type: 'array', items: { type: 'string', minLength: 1 }, description: 'Protected directory names, e.g. ".git". May be empty.' },
-                  basenames: { type: 'array', items: { type: 'string', minLength: 1 }, description: 'Protected file names, e.g. ".env". May be empty.' },
+                  segments: { type: 'array', items: { type: 'string', minLength: 1 }, description: 'Directory names protected from deletion/overwrite, e.g. ".git". May be empty.' },
+                  basenames: { type: 'array', items: { type: 'string', minLength: 1 }, description: 'File names protected from deletion/overwrite, e.g. ".env". May be empty.' },
                 },
               },
               {

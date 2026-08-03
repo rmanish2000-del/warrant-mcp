@@ -96,6 +96,65 @@ Requirements: Node ≥ 22.6 (`--experimental-strip-types`; no build step), and
 `npm install` once. Optionally set `WARRANT_MCP_WORKSPACE` in the server's
 env to pin the workspace the file rules are anchored to.
 
+## Hard enforcement via Claude Code hooks (M2)
+
+`check_action` advises; the PreToolUse hook **enforces**. Claude Code runs
+[src/hook/pretooluse.ts](src/hook/pretooluse.ts) before executing a matched
+tool call ([hooks reference](https://code.claude.com/docs/en/hooks)); a
+`permissionDecision: "deny"` on stdout blocks the call outright — it
+overrides even an `--allowedTools` allowlist, so a DENY means the action
+does not happen regardless of what the agent decides.
+
+Wire it into any project's `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node --experimental-strip-types 'C:/Push-to-Prod-2026/warrant-mcp/src/hook/pretooluse.ts'",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Optional env (set inline in the command string): `WARRANT_MCP_POLICY` pins a
+project-local compiled cache; `WARRANT_MCP_WORKSPACE` overrides the workspace
+root (default: the session's cwd, from the hook's stdin payload).
+
+How tool calls map onto the engine (adapter in
+[src/hook/adapter.ts](src/hook/adapter.ts); evaluation is the unchanged M1
+engine):
+
+- **Bash** — the whole command is checked as `shell_command`; additionally,
+  every path an `rm`-family command deletes and every `>`/`>>` redirect
+  target is checked as `file_delete` (an overwrite destroys what was there).
+- **Write / Edit / MultiEdit / NotebookEdit** — the target path is checked as
+  `file_delete` under the destructive-file-operation clauses (W1/W2 are
+  worded "create, overwrite, or delete" for exactly this reason).
+
+Decision surface, deliberately asymmetric: DENY blocks with the projector
+banner as the reason (shown to the human in the transcript and to the model);
+anything else exits silently, so Claude Code's **own permission flow still
+applies** — Warrant vetoes, it never approves. Every internal failure
+(missing policy, unreadable input, invalid cache) also denies: fail closed.
+Enforcement is fully offline — cached policy from disk, no network, no API.
+
+The runnable demo lives in `C:\Push-to-Prod-2026\warrant-mcp-demo` (own
+settings, own pinned policy cache, `.env` sentinel);
+[demo/policy-v2.md](demo/policy-v2.md) +
+[demo/policy-compiled.v2.json](demo/policy-compiled.v2.json) are the
+"policy change" variant that permits the `.env` delete — swapping the caches
+is a file copy, so no demo path ever compiles.
+
 ## Commands
 
 - `npm test` — engine verdicts, compiler schema gates, the no-side-effect
@@ -116,7 +175,11 @@ env to pin the workspace the file rules are anchored to.
   substitution, `bash -c "$(…)"`) is out of scope for this skeleton.
 - Symlinks are not resolved (`realpath` is I/O; the engine is pure). A symlink
   inside the workspace pointing outside would pass W1 by path text.
-- `check_action` is advisory infrastructure: it refuses to *approve* actions,
-  and performs none itself — but it cannot physically stop a caller that
-  ignores the verdict. Wiring it into an enforcing harness (hooks) is the
-  obvious next milestone.
+- The MCP tool alone is advisory — a caller could ignore its verdict. The
+  PreToolUse hook (M2, above) closes that gap for Bash and file-writing
+  tools inside Claude Code; other clients still get advice only.
+- The hook's Bash mapping extracts `rm`-family targets and redirect targets;
+  a sufficiently creative command (`mv x /tmp && …`, `find -delete`, custom
+  scripts) can perform a destructive file operation the extractor doesn't
+  model. The whole-command shell clauses still apply; widening the extractor
+  is future work, named here rather than implied away.

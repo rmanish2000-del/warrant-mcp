@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { tmpdir } from 'node:os';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 import { readPolicyCache } from '../compiler/cache.ts';
 import { handleCheckAction } from './handler.ts';
 import type { EvaluationContext } from '../engine/types.ts';
@@ -49,4 +50,15 @@ test('canonical verdicts hold against the real cache', () => {
       assert.ok(outcome.clauseText, `clause ${clause} must resolve to display text`);
     }
   }
+});
+
+test('the demo v2 cache permits the .env delete that v1 refuses, and nothing else demoed', () => {
+  const v2 = readPolicyCache(fileURLToPath(new URL('../../demo/policy-compiled.v2.json', import.meta.url)));
+  assert.ok(v2, 'demo/policy-compiled.v2.json is missing');
+  const checkV2 = (input: unknown) => handleCheckAction(v2.compiled, ctx, input);
+
+  assert.equal(checkV2({ kind: 'file_delete', path: '.env' }).verdict.decision, 'ALLOW');
+  assert.equal(checkV2({ kind: 'file_delete', path: '.git/HEAD' }).verdict.clause, 'W2');
+  assert.equal(checkV2({ kind: 'shell_command', command: 'sudo id' }).verdict.clause, 'W3');
+  assert.equal(checkV2({ kind: 'file_delete', path: '../outside.txt' }).verdict.clause, 'W1');
 });

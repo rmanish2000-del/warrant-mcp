@@ -27,6 +27,7 @@ const SRC = (relative: string) => fileURLToPath(new URL(relative, import.meta.ur
 const DECIDING_MODULES = [
   SRC('../engine/types.ts'),
   SRC('../engine/evaluate.ts'),
+  SRC('../hook/adapter.ts'),
   SRC('handler.ts'),
   SRC('present.ts'),
 ];
