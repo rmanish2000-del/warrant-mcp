@@ -70,7 +70,9 @@ Routes 1, 2, 3, 5, 7 were re-run as real sessions after the fix and are the
 
 Regression tests: 9 new tests named for the attacks they close, in
 `src/hook/adapter.test.ts` (`M4 bypass 1` … `M4 bypass 5`, plus the writer
-sweep, the no-false-denial set, and the sed-script exclusion). **53 tests.**
+sweep, the no-false-denial set, and the sed-script exclusion). The suite stood
+at 53 tests when this section was written; it is **77** as of M7 — `npm test`
+is the current figure, and this line is not.
 
 ## 4. Honest limits — what can still get through
 
