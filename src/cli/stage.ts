@@ -54,7 +54,7 @@ const settingsJson = (): string =>
       hooks: {
         PreToolUse: [
           {
-            matcher: 'Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit',
+            matcher: 'Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit|WebFetch|mcp__.*',
             hooks: [
               {
                 type: 'command',

@@ -112,7 +112,7 @@ Wire it into any project's `.claude/settings.json`:
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit",
+        "matcher": "Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit|WebFetch|mcp__.*",
         "hooks": [
           {
             "type": "command",
@@ -183,10 +183,12 @@ is a file copy, so no demo path ever compiles.
 - Symlinks are not resolved (`realpath` is I/O; the engine is pure). A symlink
   inside the workspace pointing outside would pass W1 by path text.
 - The MCP tool alone is advisory — a caller could ignore its verdict. The
-  PreToolUse hook (M2, above) closes that gap for Bash and file-writing
-  tools inside Claude Code; other clients still get advice only.
-- The hook's Bash mapping extracts `rm`-family targets and redirect targets;
-  a sufficiently creative command (`mv x /tmp && …`, `find -delete`, custom
-  scripts) can perform a destructive file operation the extractor doesn't
-  model. The whole-command shell clauses still apply; widening the extractor
-  is future work, named here rather than implied away.
+  PreToolUse hook (M2, above) closes that gap for the matched tools inside
+  Claude Code; other clients still get advice only.
+- **[SECURITY-SURFACE.md](SECURITY-SURFACE.md) is the honest account**: the
+  full tool surface, an adversarial attack log (9 real sessions, 5 bypasses
+  found and fixed in M4), and what still gets through — shell glob and
+  variable expansion, obfuscation, symlinks, unmapped tools and clients,
+  and TOCTOU. Read it before claiming this stops anything.
+- This is a *policy* layer that produces a legible, human-authored refusal.
+  It is not a sandbox and should be deployed inside one.

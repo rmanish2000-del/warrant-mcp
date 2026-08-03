@@ -10,3 +10,7 @@ node_modules/
 # is the artifact the server replays by default; it ships with the repo so a
 # fresh clone enforces immediately without an API key. Regenerating it is
 # `npm run policy:fresh`, behind that explicit command only.
+
+# Adversarial M4 fixture: a file-deleting MCP server used to test hook coverage.
+# Not product code; never shipped.
+attack-fixtures/
