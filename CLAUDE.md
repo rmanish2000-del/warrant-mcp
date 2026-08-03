@@ -138,4 +138,7 @@ Two hard-won lessons, both found by attacking the thing in real sessions:
 - `policy-compiled.pending.json` is a transient review draft; the server and
   hook never read it.
 - Current compile: **12 clauses, 14 rules**, `claude-opus-5`, prompt v1.2.0.
-- The repo is local-only — no GitHub remote yet.
+- Remote: `github.com/rmanish2000-del/warrant-mcp` — **private**. It becomes public only
+  by an explicit decision at submission, never as a side effect of a push. A full-history
+  scan across all commits found no secrets before the first push; re-run it before any
+  change of visibility.
