@@ -79,11 +79,33 @@ export const POLICY_JSON_SCHEMA = {
               {
                 type: 'object',
                 additionalProperties: false,
-                required: ['type', 'segments', 'basenames'],
+                required: ['type', 'segments', 'basenames', 'suffixes'],
                 properties: {
                   type: { const: 'file_delete_protected' },
                   segments: { type: 'array', items: { type: 'string', minLength: 1 }, description: 'Directory names protected from deletion/overwrite, e.g. ".git". May be empty.' },
                   basenames: { type: 'array', items: { type: 'string', minLength: 1 }, description: 'File names protected from deletion/overwrite, e.g. ".env". May be empty.' },
+                  suffixes: { type: 'array', items: { type: 'string', minLength: 1 }, description: 'File-name endings protected from deletion/overwrite, e.g. ".pem", ".key". Plain endsWith matching — never a pattern or wildcard. May be empty.' },
+                },
+              },
+              {
+                type: 'object',
+                additionalProperties: false,
+                required: ['type', 'allowedRoots'],
+                properties: {
+                  type: { const: 'file_write_scope' },
+                  allowedRoots: stringArray('Workspace-relative directories the agent may create, overwrite or delete inside, e.g. ["src","tests"]. Everything else is refused. Use ONLY when the policy names the writable area positively.'),
+                },
+              },
+              {
+                type: 'object',
+                additionalProperties: false,
+                required: ['type', 'command', 'subcommands', 'anyFlag', 'anyArgument'],
+                properties: {
+                  type: { const: 'shell_forbidden_invocation' },
+                  command: { type: 'string', minLength: 1, description: 'The command word, e.g. "git" or "npm".' },
+                  subcommands: { type: 'array', items: { type: 'string', minLength: 1 }, description: 'The first non-flag argument must be one of these, e.g. ["push"] or ["install","i","add"]. Empty means any.' },
+                  anyFlag: { type: 'array', items: { type: 'string', minLength: 1 }, description: 'Fires when any of these flags appears ANYWHERE in the command, e.g. ["--force","-f"]. Order-independent. Empty means any.' },
+                  anyArgument: { type: 'array', items: { type: 'string', minLength: 1 }, description: 'Fires when any of these non-flag arguments appears, e.g. ["main","master"]. Empty means any.' },
                 },
               },
               {
@@ -143,8 +165,10 @@ export const POLICY_JSON_SCHEMA = {
 const RULE_TYPES = [
   'file_delete_outside_workspace',
   'file_delete_protected',
+  'file_write_scope',
   'shell_forbidden_token',
   'shell_forbidden_sequence',
+  'shell_forbidden_invocation',
   'http_host_allowlist',
   'http_method_allowlist',
 ] as const;
@@ -168,13 +192,40 @@ function validateRule(value: unknown): Rule {
     case 'file_delete_outside_workspace':
       return { type: 'file_delete_outside_workspace' };
     case 'file_delete_protected': {
-      if (!isStringArray(record.segments, 0) || !isStringArray(record.basenames, 0)) {
-        throw new CompilerRejection('schema', 'file_delete_protected requires string arrays "segments" and "basenames"');
+      // `suffixes` post-dates the first compiled caches; absent reads as empty.
+      const suffixes = record.suffixes ?? [];
+      if (!isStringArray(record.segments, 0) || !isStringArray(record.basenames, 0) || !isStringArray(suffixes, 0)) {
+        throw new CompilerRejection('schema', 'file_delete_protected requires string arrays "segments", "basenames" and "suffixes"');
       }
-      if (record.segments.length === 0 && record.basenames.length === 0) {
-        throw new CompilerRejection('schema', 'file_delete_protected protects nothing — empty segments and basenames');
+      if (record.segments.length === 0 && record.basenames.length === 0 && suffixes.length === 0) {
+        throw new CompilerRejection('schema', 'file_delete_protected protects nothing — empty segments, basenames and suffixes');
       }
-      return { type: 'file_delete_protected', segments: record.segments, basenames: record.basenames };
+      return { type: 'file_delete_protected', segments: record.segments, basenames: record.basenames, suffixes };
+    }
+    case 'file_write_scope': {
+      if (!isStringArray(record.allowedRoots, 1)) {
+        throw new CompilerRejection('schema', 'file_write_scope requires a non-empty string array "allowedRoots"');
+      }
+      // An absolute root would hard-code a machine path into the policy —
+      // the same rule that keeps the workspace itself system-stamped.
+      for (const root of record.allowedRoots) {
+        if (/^([A-Za-z]:[\\/]|[\\/])/.test(root)) {
+          throw new CompilerRejection('schema', `file_write_scope root "${root}" is absolute — roots are workspace-relative`);
+        }
+      }
+      return { type: 'file_write_scope', allowedRoots: record.allowedRoots };
+    }
+    case 'shell_forbidden_invocation': {
+      if (typeof record.command !== 'string' || record.command.trim().length === 0) {
+        throw new CompilerRejection('schema', 'shell_forbidden_invocation requires a non-empty string "command"');
+      }
+      const subcommands = record.subcommands ?? [];
+      const anyFlag = record.anyFlag ?? [];
+      const anyArgument = record.anyArgument ?? [];
+      if (!isStringArray(subcommands, 0) || !isStringArray(anyFlag, 0) || !isStringArray(anyArgument, 0)) {
+        throw new CompilerRejection('schema', 'shell_forbidden_invocation requires string arrays "subcommands", "anyFlag" and "anyArgument"');
+      }
+      return { type: 'shell_forbidden_invocation', command: record.command, subcommands, anyFlag, anyArgument };
     }
     case 'shell_forbidden_token': {
       if (!isStringArray(record.tokens, 1)) throw new CompilerRejection('schema', 'shell_forbidden_token requires a non-empty string array "tokens"');

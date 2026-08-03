@@ -151,6 +151,90 @@ test('determinism: identical inputs produce identical verdicts', () => {
   assert.deepEqual(verdict(input), verdict(input));
 });
 
+/**
+ * M6 rules. Each block covers the allow case, the deny case, and precedence
+ * against an existing clause; schema.test.ts carries the fail-closed cases.
+ */
+const M6: CompiledPolicy = {
+  clauses: [
+    { id: 'W1', text: 'Stay inside the project.' },
+    { id: 'W2', text: 'Leave .env and .git alone.' },
+    { id: 'W8', text: 'Never force-push, and never rewrite history.' },
+    { id: 'W9', text: 'Don\'t push straight to main or master.' },
+    { id: 'W10', text: 'Don\'t install new dependencies.' },
+    { id: 'W11', text: 'Never touch private keys or certificates.' },
+    { id: 'W12', text: 'Only write inside src and tests.' },
+  ],
+  rules: [
+    { clause: 'W1', rule: { type: 'file_delete_outside_workspace' } },
+    { clause: 'W2', rule: { type: 'file_delete_protected', segments: ['.git'], basenames: ['.env'], suffixes: [] } },
+    { clause: 'W8', rule: { type: 'shell_forbidden_invocation', command: 'git', subcommands: ['push'], anyFlag: ['--force', '-f', '--force-with-lease'], anyArgument: [] } },
+    { clause: 'W9', rule: { type: 'shell_forbidden_invocation', command: 'git', subcommands: ['push'], anyFlag: [], anyArgument: ['main', 'master'] } },
+    { clause: 'W10', rule: { type: 'shell_forbidden_invocation', command: 'npm', subcommands: ['install', 'i', 'add'], anyFlag: [], anyArgument: [] } },
+    { clause: 'W11', rule: { type: 'file_delete_protected', segments: [], basenames: [], suffixes: ['.pem', '.key'] } },
+    { clause: 'W12', rule: { type: 'file_write_scope', allowedRoots: ['src', 'tests'] } },
+  ],
+};
+
+const m6 = (input: unknown): Verdict => evaluate(toEvaluable(M6), input, CTX);
+
+test('M6 invocation rule — flag anywhere in the line, which sequences could not catch', () => {
+  // The exact failure that motivated the rule: flags after positional args.
+  assert.equal(m6({ kind: 'shell_command', command: 'git push origin main --force' }).clause, 'W8');
+  assert.equal(m6({ kind: 'shell_command', command: 'git push --force origin dev' }).clause, 'W8');
+  assert.equal(m6({ kind: 'shell_command', command: 'git push -u origin dev --force-with-lease' }).clause, 'W8');
+  // Allow case: an ordinary push to a feature branch breaches nothing.
+  assert.equal(m6({ kind: 'shell_command', command: 'git push origin feature/x' }).decision, 'ALLOW');
+  // Other subcommands of the same command are untouched.
+  assert.equal(m6({ kind: 'shell_command', command: 'git status' }).decision, 'ALLOW');
+  assert.equal(m6({ kind: 'shell_command', command: 'git commit -m "-f is in the message"' }).decision, 'ALLOW');
+});
+
+test('M6 invocation rule — argument matching, and precedence between two clauses on the same command', () => {
+  assert.equal(m6({ kind: 'shell_command', command: 'git push origin main' }).clause, 'W9');
+  // Both W8 and W9 apply; clause order decides, and W8 is cited.
+  assert.equal(m6({ kind: 'shell_command', command: 'git push origin main --force' }).clause, 'W8');
+  assert.equal(m6({ kind: 'shell_command', command: 'npm install left-pad' }).clause, 'W10');
+  assert.equal(m6({ kind: 'shell_command', command: 'npm i -D vitest' }).clause, 'W10');
+  assert.equal(m6({ kind: 'shell_command', command: 'npm test' }).decision, 'ALLOW');
+});
+
+test('M6 invocation rule — fires inside a chained command, not only at the start', () => {
+  assert.equal(m6({ kind: 'shell_command', command: 'npm test && git push origin main' }).clause, 'W9');
+});
+
+test('M6 suffix protection — allow, deny, and precedence with the workspace clause', () => {
+  assert.equal(m6({ kind: 'file_delete', path: 'src/server.pem' }).clause, 'W11');
+  assert.equal(m6({ kind: 'file_delete', path: 'src/id_rsa.KEY' }).clause, 'W11');
+  assert.equal(m6({ kind: 'file_delete', path: 'src/notes.md' }).decision, 'ALLOW');
+  // Outside the workspace, W1 is cited first — precedence is clause order.
+  assert.equal(m6({ kind: 'file_delete', path: resolve(sep + 'elsewhere', 'server.pem') }).clause, 'W1');
+});
+
+test('M6 write scope — allow inside the named roots, deny outside them', () => {
+  assert.equal(m6({ kind: 'file_delete', path: 'src/app.ts' }).decision, 'ALLOW');
+  assert.equal(m6({ kind: 'file_delete', path: 'tests/app.test.ts' }).decision, 'ALLOW');
+  assert.equal(m6({ kind: 'file_delete', path: 'docs/readme.md' }).clause, 'W12');
+  assert.equal(m6({ kind: 'file_delete', path: 'package.json' }).clause, 'W12');
+  // A near-miss prefix must not count as inside: srcfoo is not src.
+  assert.equal(m6({ kind: 'file_delete', path: 'srcfoo/app.ts' }).clause, 'W12');
+  // Precedence: a protected name inside a writable root still cites W2.
+  assert.equal(m6({ kind: 'file_delete', path: 'src/.env' }).clause, 'W2');
+});
+
+test('M6 rules keep the other action kinds untouched', () => {
+  // A shell rule never fires on a file action, and vice versa.
+  assert.equal(m6({ kind: 'shell_command', command: 'cat src/.env' }).decision, 'ALLOW');
+  assert.equal(m6({ kind: 'http_request', url: 'https://api.github.com/user', method: 'GET' }).decision, 'ALLOW');
+});
+
+test('M6 — malformed actions still fail closed against the new rules', () => {
+  const verdict = m6({ kind: 'shell_command', command: '' });
+  assert.equal(verdict.decision, 'DENY');
+  assert.equal(verdict.reason, 'INVALID_ACTION');
+  assert.equal(verdict.clause, null);
+});
+
 test('toEvaluable physically strips the clause English', () => {
   const evaluable = toEvaluable(POLICY);
   assert.equal('clauses' in evaluable, false);

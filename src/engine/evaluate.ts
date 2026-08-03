@@ -84,6 +84,23 @@ function shellTokens(command: string): string[] {
     .map((token) => token.toLowerCase());
 }
 
+/** Simple commands between shell separators — pure token work, no shell semantics. */
+function simpleCommands(tokens: readonly string[]): string[][] {
+  const separators = new Set([';', '&&', '||', '|', '&']);
+  const simples: string[][] = [];
+  let current: string[] = [];
+  for (const token of tokens) {
+    if (separators.has(token)) {
+      if (current.length > 0) simples.push(current);
+      current = [];
+    } else {
+      current.push(token);
+    }
+  }
+  if (current.length > 0) simples.push(current);
+  return simples;
+}
+
 function containsSequence(tokens: readonly string[], sequence: readonly string[]): boolean {
   if (sequence.length === 0) return false;
   outer: for (let i = 0; i + sequence.length <= tokens.length; i++) {
@@ -125,6 +142,55 @@ function violation(rule: Rule, action: Action, ctx: EvaluationContext): string |
         if (basename === foldPath(protectedBasename, ctx)) {
           return `the file is named "${protectedBasename}", which is protected`;
         }
+      }
+      for (const suffix of rule.suffixes ?? []) {
+        if (basename !== undefined && basename.endsWith(foldPath(suffix, ctx))) {
+          return `the file ends in "${suffix}", which is protected`;
+        }
+      }
+      return null;
+    }
+    case 'file_write_scope': {
+      if (action.kind !== 'file_delete') return null;
+      const root = resolve(ctx.workspaceRoot);
+      const resolved = resolve(root, action.path);
+      const inside = rule.allowedRoots.some((allowed) => {
+        const allowedRoot = resolve(root, allowed);
+        return (
+          foldPath(resolved, ctx) === foldPath(allowedRoot, ctx) ||
+          foldPath(resolved, ctx).startsWith(foldPath(allowedRoot + sep, ctx))
+        );
+      });
+      return inside
+        ? null
+        : `${resolved} is not inside ${rule.allowedRoots.length === 1 ? 'the writable area' : 'any writable area'} (${rule.allowedRoots.join(', ')})`;
+    }
+    case 'shell_forbidden_invocation': {
+      if (action.kind !== 'shell_command') return null;
+      const wanted = rule.command.toLowerCase();
+      for (const simple of simpleCommands(shellTokens(action.command))) {
+        if (simple[0] !== wanted) continue;
+        const args = simple.slice(1);
+        const flags = args.filter((token) => token.startsWith('-'));
+        const plain = args.filter((token) => !token.startsWith('-'));
+
+        if (rule.subcommands.length > 0) {
+          const subcommand = plain[0];
+          if (subcommand === undefined || !rule.subcommands.some((s) => s.toLowerCase() === subcommand)) continue;
+        }
+        if (rule.anyFlag.length > 0 && !rule.anyFlag.some((flag) => flags.includes(flag.toLowerCase()))) continue;
+        if (rule.anyArgument.length > 0 && !rule.anyArgument.some((argument) => plain.includes(argument.toLowerCase()))) {
+          continue;
+        }
+
+        const described = [
+          `"${rule.command}`,
+          rule.subcommands.length > 0 ? ` ${rule.subcommands.find((s) => plain.includes(s.toLowerCase())) ?? rule.subcommands[0]}` : '',
+          rule.anyFlag.length > 0 ? ` ${rule.anyFlag.find((f) => flags.includes(f.toLowerCase()))}` : '',
+          rule.anyArgument.length > 0 ? ` ${rule.anyArgument.find((a) => plain.includes(a.toLowerCase()))}` : '',
+          '"',
+        ].join('');
+        return `the command is ${described}, which is forbidden`;
       }
       return null;
     }

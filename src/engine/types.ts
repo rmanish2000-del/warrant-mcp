@@ -34,11 +34,45 @@ export interface ClauseText {
 export type Rule =
   /** Denies a file_delete whose resolved path is not inside the workspace root. */
   | { readonly type: 'file_delete_outside_workspace' }
-  /** Denies a file_delete whose path contains a protected segment (e.g. ".git") or protected basename (e.g. ".env"). */
+  /**
+   * Denies a file_delete whose path contains a protected segment (e.g.
+   * ".git"), a protected basename (e.g. ".env"), or a protected suffix
+   * (e.g. ".pem"). Suffix matching is `endsWith` on the basename — pure
+   * data, not a pattern language. Optional at runtime so caches compiled
+   * before suffixes existed still validate.
+   */
   | {
       readonly type: 'file_delete_protected';
       readonly segments: readonly string[];
       readonly basenames: readonly string[];
+      readonly suffixes?: readonly string[];
+    }
+  /**
+   * Denies a file_delete whose path is not inside one of these roots
+   * (relative to the workspace). The positive form people actually write —
+   * "only write inside src/ and tests/" — expressed, like every rule here,
+   * as a prohibition: anything outside every listed root is refused.
+   */
+  | { readonly type: 'file_write_scope'; readonly allowedRoots: readonly string[] }
+  /**
+   * Denies a shell_command matching a command/subcommand/flag shape,
+   * order-independently. This is what `shell_forbidden_sequence` could not
+   * say: `git push origin main --force` and `git push --force origin main`
+   * are the same intent with different token order.
+   *
+   * Empty array means "don't constrain this dimension". All non-empty
+   * dimensions must match for the rule to fire:
+   * - `command`     — the command word (required, exact).
+   * - `subcommands` — the first non-flag argument must be one of these.
+   * - `anyFlag`     — at least one of these flag tokens appears anywhere.
+   * - `anyArgument` — at least one of these non-flag arguments appears.
+   */
+  | {
+      readonly type: 'shell_forbidden_invocation';
+      readonly command: string;
+      readonly subcommands: readonly string[];
+      readonly anyFlag: readonly string[];
+      readonly anyArgument: readonly string[];
     }
   /** Denies a shell_command containing any of these tokens (case-insensitive, word-level). */
   | { readonly type: 'shell_forbidden_token'; readonly tokens: readonly string[] }

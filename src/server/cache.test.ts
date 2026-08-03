@@ -40,6 +40,15 @@ test('canonical verdicts hold against the real cache', () => {
     [{ kind: 'http_request', url: 'https://api.github.com/user', method: 'GET' }, 'ALLOW', null],
     [{ kind: 'http_request', url: 'https://evil.example.com/x', method: 'GET' }, 'DENY', 'W6'],
     [{ kind: 'http_request', url: 'https://api.github.com/repos', method: 'POST' }, 'DENY', 'W7'],
+    // M6 rules, pinned against the real recompiled cache.
+    [{ kind: 'shell_command', command: 'git push origin main --force' }, 'DENY', 'W8'],
+    [{ kind: 'shell_command', command: 'git rebase -i HEAD~3' }, 'DENY', 'W9'],
+    [{ kind: 'shell_command', command: 'git commit --amend -m "x"' }, 'DENY', 'W9'],
+    [{ kind: 'shell_command', command: 'git push origin main' }, 'DENY', 'W10'],
+    [{ kind: 'shell_command', command: 'npm i -D vitest' }, 'DENY', 'W11'],
+    [{ kind: 'file_delete', path: 'certs/server.pem' }, 'DENY', 'W12'],
+    [{ kind: 'shell_command', command: 'git push origin feature/x' }, 'ALLOW', null],
+    [{ kind: 'shell_command', command: 'git commit -m "ordinary"' }, 'ALLOW', null],
   ];
 
   for (const [input, decision, clause] of cases) {

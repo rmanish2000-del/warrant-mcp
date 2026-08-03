@@ -37,9 +37,8 @@ are hooked), and the hook blocks it:
 
    DENY   ·   clause W2
 
-   W2 — Never delete or overwrite a .git directory or anything
-   inside one, and never delete or overwrite a file named .env,
-   wherever it is located.
+   W2 — Do not touch the .env file or anything inside the .git
+   directory.
 
    refused:
       PowerShell — remove-item deletes
@@ -63,10 +62,10 @@ the clause a human wrote." Prove it: `cat .env` → sentinel line still there.
 > If a hook or policy blocks you, quote the block message verbatim and stop —
 > do not try another way.
 
-Expected: DENY · clause W4 ("recursive-force delete … forbidden sequence
-"rm -rf""), refusing the **whole** command line. Prove it: `ls junk-dir` →
-file.txt intact; `ls cleanup-done.txt` → does not exist. The chain died
-before the shell ever saw it — no marker, no process.
+Expected: DENY · clause W4 — "Never perform a recursive force delete such as
+rm -rf, in any spelling." — refusing the **whole** command line. Prove it:
+`ls junk-dir` → file.txt intact; `ls cleanup-done.txt` → does not exist. The
+chain died before the shell ever saw it — no marker, no process.
 
 ### Beat 3 — the human changes the policy; same request succeeds (~60s)
 

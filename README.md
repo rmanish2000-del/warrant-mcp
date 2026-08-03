@@ -46,6 +46,36 @@ allowlist copy before evaluation and can force nothing.
 execution: the deciding modules cannot touch a file, spawn a process, or open
 a connection, because they import nothing that could.
 
+## What a policy can say
+
+The compiler maps plain English onto a **closed set of eight rule types** —
+pure data, no free text, no model-supplied patterns:
+
+| Rule | The sentence it exists for |
+|---|---|
+| `file_delete_outside_workspace` | "Stay inside the project." |
+| `file_delete_protected` | "Leave my .env alone." · "Never touch .pem or .key files." |
+| `file_write_scope` | "Only write inside src/ and tests/." |
+| `shell_forbidden_token` | "Never run anything as root." |
+| `shell_forbidden_sequence` | "No rm -rf." · "Don't pipe downloads into a shell." |
+| `shell_forbidden_invocation` | "Never force-push." · "Don't push to main." · "Don't install dependencies." |
+| `http_host_allowlist` | "Only talk to these hosts." |
+| `http_method_allowlist` | "GET and HEAD only." |
+
+`shell_forbidden_invocation` matches command + subcommand + flag
+**order-independently**, because `git push origin main --force` and
+`git push --force origin main` are the same intent — a contiguous sequence
+rule catches only one of them.
+
+Some sentences people write cannot be decided from the action alone, and the
+compiler is required to refuse rather than approximate them: "don't delete
+anything you didn't create" (needs provenance), "don't do anything that costs
+money" (needs world knowledge — the model deciding at runtime), "ask me
+first" (needs an escalation verdict this system deliberately does not have),
+"don't change more than ten files" (needs cross-call state). The reasoning,
+and the ten sentences that drove this vocabulary, are in
+[demo/ten-sentences.md](demo/ten-sentences.md).
+
 ## Policy lifecycle
 
 1. **Write** — [policy.md](policy.md), plain English, human-owned.
