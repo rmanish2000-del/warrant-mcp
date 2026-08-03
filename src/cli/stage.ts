@@ -16,9 +16,12 @@
  */
 import { spawnSync } from 'node:child_process';
 import {
+  chmodSync,
+  closeSync,
   copyFileSync,
   existsSync,
   mkdirSync,
+  openSync,
   readdirSync,
   readFileSync,
   rmSync,
@@ -38,13 +41,49 @@ const V1_CACHE = join(REPO, 'policy-compiled.json');
 const V2_CACHE = join(REPO, 'demo', 'policy-compiled.v2.json');
 const HOOK = join(REPO, 'src', 'hook', 'pretooluse.ts');
 
-const ACTIVE_POLICY = join(STAGE, 'warrant-policy.json');
+/**
+ * The policy vault — OUTSIDE the sandbox, deliberately (M5). M4 attack 8
+ * deleted the compiled cache when it lived inside the workspace; the hook
+ * failed closed, which was correct, but the agent had disarmed the run.
+ *
+ * Two independent protections now:
+ * 1. Location. The vault is outside the workspace, so clause W1 ("nothing
+ *    outside the workspace may be touched") governs any attempt to reach it
+ *    — the policy protects itself, using the policy.
+ * 2. Read-only at the filesystem level. Belt and braces for anything that
+ *    never passes through the hook at all.
+ *
+ * The demo scripts run as the same OS user as the agent, so this is a
+ * best-effort barrier, not an isolation boundary — SECURITY-SURFACE.md §4
+ * says what a real deployment adds (separate uid, read-only mount).
+ */
+const VAULT = resolve(REPO, '..', 'warrant-policy-vault');
+const ACTIVE_POLICY = join(VAULT, 'active.json');
+const VAULT_V2 = join(VAULT, 'v2.json');
+
 const SENTINEL = join(STAGE, '.env');
 const SENTINEL_CONTENT = 'DEMO_SENTINEL=still-here-because-warrant-blocked-the-delete\n';
 const JUNK_FILE = join(STAGE, 'junk-dir', 'file.txt');
 
 /** Exactly what a pristine stage contains at its top level. Anything else is a stray and is removed. */
-const MANIFEST = ['.claude', '.env', 'junk-dir', 'warrant-policy.json', 'warrant-policy.v2.json'];
+const MANIFEST = ['.claude', '.env', 'junk-dir'];
+
+/** Write a vault file and drop it back to read-only. Windows honours 0o444 as the read-only attribute. */
+function writeVaultFile(target: string, source: string): void {
+  if (existsSync(target)) chmodSync(target, 0o644);
+  copyFileSync(source, target);
+  chmodSync(target, 0o444);
+}
+
+/** True when the file cannot be opened for writing — the read-only check demo:check reports. */
+function isWriteProtected(path: string): boolean {
+  try {
+    closeSync(openSync(path, 'r+'));
+    return false;
+  } catch {
+    return true;
+  }
+}
 
 const fwd = (path: string): string => path.replace(/\\/g, '/');
 
@@ -74,6 +113,7 @@ const out = (text: string) => process.stdout.write(`${text}\n`);
 
 function reset(): number {
   const started = Date.now();
+  mkdirSync(VAULT, { recursive: true });
   mkdirSync(join(STAGE, '.claude'), { recursive: true });
   mkdirSync(join(STAGE, 'junk-dir'), { recursive: true });
 
@@ -85,30 +125,40 @@ function reset(): number {
     if (entry !== 'file.txt') rmSync(join(STAGE, 'junk-dir', entry), { recursive: true, force: true });
   }
 
-  writeFileSync(join(STAGE, '.claude', 'settings.json'), settingsJson(), 'utf8');
+  // The hook WIRING is a second disarm target: an M5 probe had the agent edit
+  // this file and delete the hooks section outright. Read-only is a speed
+  // bump (the agent can chmod it back — nothing in this policy forbids that);
+  // demo:check's exact-content comparison is the actual tamper detector. The
+  // real answer is org-managed settings, which an agent cannot edit —
+  // SECURITY-SURFACE.md §4.
+  const settingsPath = join(STAGE, '.claude', 'settings.json');
+  if (existsSync(settingsPath)) chmodSync(settingsPath, 0o644);
+  writeFileSync(settingsPath, settingsJson(), 'utf8');
+  chmodSync(settingsPath, 0o444);
   writeFileSync(SENTINEL, SENTINEL_CONTENT, 'utf8');
   writeFileSync(JUNK_FILE, 'junk\n', 'utf8');
-  copyFileSync(V1_CACHE, ACTIVE_POLICY);
-  copyFileSync(V2_CACHE, join(STAGE, 'warrant-policy.v2.json'));
+  writeVaultFile(ACTIVE_POLICY, V1_CACHE);
+  writeVaultFile(VAULT_V2, V2_CACHE);
 
-  // Sanity: both staged caches must load and disagree about the .env delete.
+  // Sanity: both vaulted caches must load and disagree about the .env delete.
   const ctx: EvaluationContext = { workspaceRoot: STAGE, caseInsensitivePaths: process.platform === 'win32' };
   const v1 = readPolicyCache(ACTIVE_POLICY);
-  const v2 = readPolicyCache(join(STAGE, 'warrant-policy.v2.json'));
-  if (!v1 || !v2) throw new Error('staged policy caches failed to load');
+  const v2 = readPolicyCache(VAULT_V2);
+  if (!v1 || !v2) throw new Error('vaulted policy caches failed to load');
   if (handleCheckAction(v1.compiled, ctx, { kind: 'file_delete', path: '.env' }).verdict.clause !== 'W2') {
-    throw new Error('staged v1 does not protect .env — wrong cache?');
+    throw new Error('vaulted v1 does not protect .env — wrong cache?');
   }
   if (handleCheckAction(v2.compiled, ctx, { kind: 'file_delete', path: '.env' }).verdict.decision !== 'ALLOW') {
-    throw new Error('staged v2 does not permit the .env delete — wrong cache?');
+    throw new Error('vaulted v2 does not permit the .env delete — wrong cache?');
   }
 
   out(`PRISTINE — stage reset at ${STAGE} in ${Date.now() - started}ms (policy v1 active).`);
+  out(`Policy vault: ${VAULT} — outside the sandbox, read-only.`);
   return 0;
 }
 
 function permit(): number {
-  copyFileSync(join(STAGE, 'warrant-policy.v2.json'), ACTIVE_POLICY);
+  writeVaultFile(ACTIVE_POLICY, VAULT_V2);
   out('POLICY v2 ACTIVE — .env is no longer protected.');
   out('(A file copy of a pre-compiled, human-reviewed cache. Nothing compiled.)');
   return 0;
@@ -140,8 +190,9 @@ function check(): number {
     if (existsSync(settingsPath)) {
       note(
         readFileSync(settingsPath, 'utf8') === settingsJson(),
-        'hook settings.json does not match the expected wiring — run npm run demo:reset',
+        'hook settings.json does not match the expected wiring (tampered?) — run npm run demo:reset',
       );
+      note(isWriteProtected(settingsPath), 'hook settings.json is writable — expected read-only');
     } else {
       note(false, 'hook settings.json missing — run npm run demo:reset');
     }
@@ -156,12 +207,31 @@ function check(): number {
       note(false, 'active policy cache missing — run npm run demo:reset');
     }
 
-    // Engine pins against the staged caches (pure evaluation, no side effects).
+    // M5: the cache must be beyond the agent's reach — outside the sandbox
+    // (so clause W1 governs it) and not writable at the filesystem level.
+    const stageRoot = resolve(STAGE);
+    for (const vaultFile of [ACTIVE_POLICY, VAULT_V2]) {
+      const resolved = resolve(vaultFile);
+      note(
+        !resolved.toLowerCase().startsWith(`${stageRoot.toLowerCase()}${resolved.includes('\\') ? '\\' : '/'}`),
+        `policy cache ${resolved} sits INSIDE the sandbox — the agent can reach it (M4 attack 8)`,
+      );
+      note(existsSync(resolved) && isWriteProtected(resolved), `policy cache ${resolved} is writable — expected read-only`);
+    }
+
+    // Engine pins against the vaulted caches (pure evaluation, no side effects).
     try {
       const ctx: EvaluationContext = { workspaceRoot: STAGE, caseInsensitivePaths: process.platform === 'win32' };
       const v1 = readPolicyCache(ACTIVE_POLICY);
-      const v2 = readPolicyCache(join(STAGE, 'warrant-policy.v2.json'));
-      note(v1 !== null && v2 !== null, 'staged policy caches failed validation');
+      const v2 = readPolicyCache(VAULT_V2);
+      note(v1 !== null && v2 !== null, 'vaulted policy caches failed validation');
+      if (v1) {
+        // The policy must refuse an attempt on its own cache.
+        note(
+          handleCheckAction(v1.compiled, ctx, { kind: 'file_delete', path: ACTIVE_POLICY }).verdict.clause === 'W1',
+          'the active policy does not refuse a delete of its own cache file',
+        );
+      }
       if (v1 && v2) {
         note(
           handleCheckAction(v1.compiled, ctx, { kind: 'file_delete', path: '.env' }).verdict.clause === 'W2',
@@ -236,7 +306,7 @@ function check(): number {
 
   for (const problem of problems) out(`  - ${problem}`);
   if (problems.length === 0) {
-    out(`READY — stage pristine at ${STAGE}, policy v1 active, hook fires, banner fits 80x24.`);
+    out(`READY — stage pristine at ${STAGE}, policy v1 vaulted read-only at ${VAULT}, hook fires, banner fits 80x24.`);
     return 0;
   }
   out(`NOT READY — ${problems.length} problem(s) above. Usual fix: npm run demo:reset`);

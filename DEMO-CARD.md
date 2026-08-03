@@ -11,6 +11,8 @@ compile, no network); only Claude Code's own model access needs the internet.
 
 - [ ] `node --version` → must print v22.6 or newer
 - [ ] `cd <repo>/warrant-mcp` → `npm run demo:reset` → `PRISTINE — … (policy v1 active).`
+      (also prints the policy vault path — the compiled cache lives **outside**
+      the sandbox, read-only, so the agent cannot reach or disarm it)
 - [ ] `npm run demo:check` → last line **READY** (anything else: it tells you the fix)
 - [ ] Terminal at **80×24 or larger, font ≥ 18 pt** — banner is 64 cols × ≤20
       lines, verified to fit 80×24 (see "Legibility", below)

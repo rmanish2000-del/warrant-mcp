@@ -153,7 +153,9 @@ applies** — Warrant vetoes, it never approves. Every internal failure
 Enforcement is fully offline — cached policy from disk, no network, no API.
 
 The runnable demo lives in `C:\Push-to-Prod-2026\warrant-mcp-demo` (own
-settings, own pinned policy cache, `.env` sentinel);
+settings, `.env` sentinel), with its compiled policy vaulted **outside** the
+sandbox and read-only so the agent cannot reach it — clause W1 governs the
+vault path, so the policy protects itself (SECURITY-SURFACE.md §5);
 [demo/policy-v2.md](demo/policy-v2.md) +
 [demo/policy-compiled.v2.json](demo/policy-compiled.v2.json) are the
 "policy change" variant that permits the `.env` delete — swapping the caches
