@@ -1,0 +1,158 @@
+{
+  "policyText": "# warrant-mcp policy\n\nHuman-written, plain English. This file is the source of truth; Claude compiles\nit into numbered clauses (`npm run policy:fresh`), the human reviews the\ncompiled output, and deterministic code enforces it. Editing this file changes\nnothing until it is recompiled and the compiled cache is reviewed.\n\nThe agent works inside one workspace directory (stamped by the system at\nserver start — the policy never names a machine path).\n\n1. Delete files only inside the workspace. Anything outside it must not be\n   deleted.\n2. Never delete a .git directory or anything inside one, and never delete a\n   file named .env, wherever it is.\n3. Never run a shell command that invokes sudo or su.\n4. Never run a recursive-force delete (rm -rf in any of its spellings).\n5. Never pipe anything into a shell (| sh, | bash, and the like).\n6. Send HTTP requests only to api.github.com and registry.npmjs.org. Every\n   other host is refused.\n7. Even to those hosts, only GET and HEAD requests are allowed.\n",
+  "compiled": {
+    "clauses": [
+      {
+        "id": "W1",
+        "text": "Files may be deleted only inside the workspace directory; deletion of anything outside it is forbidden."
+      },
+      {
+        "id": "W2",
+        "text": "Never delete a .git directory or anything inside one, and never delete a file named .env, wherever it is located."
+      },
+      {
+        "id": "W3",
+        "text": "Never run a shell command that invokes sudo or su."
+      },
+      {
+        "id": "W4",
+        "text": "Never run a recursive-force delete (rm -rf in any of its spellings)."
+      },
+      {
+        "id": "W5",
+        "text": "Never pipe anything into a shell (such as | sh or | bash)."
+      },
+      {
+        "id": "W6",
+        "text": "HTTP requests may be sent only to api.github.com and registry.npmjs.org; every other host is refused."
+      },
+      {
+        "id": "W7",
+        "text": "Even for those allowed hosts, only GET and HEAD requests are permitted."
+      }
+    ],
+    "rules": [
+      {
+        "clause": "W1",
+        "rule": {
+          "type": "file_delete_outside_workspace"
+        }
+      },
+      {
+        "clause": "W2",
+        "rule": {
+          "type": "file_delete_protected",
+          "segments": [
+            ".git"
+          ],
+          "basenames": [
+            ".env"
+          ]
+        }
+      },
+      {
+        "clause": "W3",
+        "rule": {
+          "type": "shell_forbidden_token",
+          "tokens": [
+            "sudo",
+            "su"
+          ]
+        }
+      },
+      {
+        "clause": "W4",
+        "rule": {
+          "type": "shell_forbidden_sequence",
+          "sequences": [
+            [
+              "rm",
+              "-rf"
+            ],
+            [
+              "rm",
+              "-fr"
+            ],
+            [
+              "rm",
+              "-Rf"
+            ],
+            [
+              "rm",
+              "-fR"
+            ],
+            [
+              "rm",
+              "-r",
+              "-f"
+            ],
+            [
+              "rm",
+              "-f",
+              "-r"
+            ],
+            [
+              "rm",
+              "-R",
+              "-f"
+            ],
+            [
+              "rm",
+              "-f",
+              "-R"
+            ],
+            [
+              "rm",
+              "--recursive",
+              "--force"
+            ],
+            [
+              "rm",
+              "--force",
+              "--recursive"
+            ]
+          ]
+        }
+      },
+      {
+        "clause": "W5",
+        "rule": {
+          "type": "shell_forbidden_sequence",
+          "sequences": [
+            [
+              "|",
+              "sh"
+            ],
+            [
+              "|",
+              "bash"
+            ]
+          ]
+        }
+      },
+      {
+        "clause": "W6",
+        "rule": {
+          "type": "http_host_allowlist",
+          "hosts": [
+            "api.github.com",
+            "registry.npmjs.org"
+          ]
+        }
+      },
+      {
+        "clause": "W7",
+        "rule": {
+          "type": "http_method_allowlist",
+          "methods": [
+            "GET",
+            "HEAD"
+          ]
+        }
+      }
+    ]
+  },
+  "model": "claude-opus-5",
+  "promptVersion": "1.0.0",
+  "compiledAt": "2026-08-03T15:05:54.475Z"
+}

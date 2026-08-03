@@ -1,0 +1,12 @@
+# Secrets. Never committed, never read aloud, never echoed.
+.env
+.env.*
+!.env.example
+
+node_modules/
+*.log
+
+# NOTE: policy-compiled.json is deliberately NOT ignored. The cached compile
+# is the artifact the server replays by default; it ships with the repo so a
+# fresh clone enforces immediately without an API key. Regenerating it is
+# `npm run policy:fresh`, behind that explicit command only.

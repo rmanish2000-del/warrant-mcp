@@ -1,0 +1,26 @@
+{
+  "name": "warrant-mcp",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Policy firewall for agent tool calls — an MCP server that checks intended actions against a human-written, Claude-compiled, deterministically evaluated policy",
+  "type": "module",
+  "engines": {
+    "node": ">=22.6"
+  },
+  "scripts": {
+    "start": "node --experimental-strip-types src/server/main.ts",
+    "policy:fresh": "node --experimental-strip-types --env-file-if-exists=.env src/cli/compile.ts fresh",
+    "policy:show": "node --experimental-strip-types src/cli/compile.ts show",
+    "demo": "node --experimental-strip-types src/cli/demo.ts",
+    "test": "node --experimental-strip-types --test src/engine/evaluate.test.ts src/compiler/schema.test.ts src/server/guard.test.ts src/server/cache.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
+    "@modelcontextprotocol/sdk": "^1.12.0"
+  }
+}
