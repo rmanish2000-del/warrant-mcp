@@ -76,6 +76,54 @@ first" (needs an escalation verdict this system deliberately does not have),
 and the ten sentences that drove this vocabulary, are in
 [demo/ten-sentences.md](demo/ten-sentences.md).
 
+## Writing a policy (the authoring loop)
+
+Three commands, for someone who has never seen this project:
+
+```bash
+npm run policy:review
+```
+
+Compiles [policy.md](policy.md) live — **the one place compiling is correct,
+because a human is present and deciding** — then shows every clause numbered,
+every rule under it *in plain English rather than JSON*, and what changes in
+**behaviour** against the previous policy. Nothing the hook reads is written
+unless you accept; the draft waits in `policy-compiled.pending.json`, which
+the server and hook never read. In a non-interactive shell it never guesses
+consent — it holds the draft and tells you the next command.
+
+```bash
+npm run policy:test -- "delete .env"
+npm run policy:test -- "shell git push origin main --force"
+npm run policy:test -- "http GET https://example.com"
+npm run policy:test -- --pending "delete .env"
+```
+
+Dry-runs one action against the active policy (or the pending draft) and
+prints the verdict with the governing clause. Nothing is enforced, executed,
+or written. It never guesses a kind from content — an input it does not
+recognise is refused with usage, so the dry run always tests what you typed.
+
+```bash
+npm run policy:accept
+```
+
+Promotes the reviewed draft to active. **Never compiles** — a re-validated
+file copy.
+
+**The behaviour diff** is derived, not textual: every action in
+[src/authoring/corpus.ts](src/authoring/corpus.ts) is evaluated against both
+policies with the same pure evaluator the hook uses, and the difference is
+reported in three directions — now refused, now allowed (flagged as
+*widening authority*), and still refused but under a different clause. A
+reworded policy that enforces the same thing reports "no behaviour change",
+which is exactly what a text diff cannot tell you.
+
+**When the compiler refuses**, the review screen shows the offending
+sentence, what the rule set can express nearby, and a concrete rewrite to
+paste. Rule-less clauses and model-declared `unmapped` sentences converge on
+that same screen, so it never matters which way the failure was reported.
+
 ## Policy lifecycle
 
 1. **Write** — [policy.md](policy.md), plain English, human-owned.

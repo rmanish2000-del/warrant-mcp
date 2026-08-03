@@ -14,3 +14,6 @@ node_modules/
 # Adversarial M4 fixture: a file-deleting MCP server used to test hook coverage.
 # Not product code; never shipped.
 attack-fixtures/
+
+# Reviewed-but-not-accepted draft. Transient; the hook never reads it.
+policy-compiled.pending.json

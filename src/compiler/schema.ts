@@ -289,12 +289,13 @@ export function parseCompiledPolicy(raw: string): ModelCompiledPolicy {
     }
     return { clause: item.clause, rule: validateRule(item.rule) };
   });
+  // A clause with no rule is the same failure as a sentence the model listed
+  // under `unmapped`: it could not be expressed. Both converge here so the
+  // human gets one refusal and one explanation — the review screen's
+  // guidance keys off the sentence, and it must not matter which way the
+  // model happened to report it.
   const ruledClauses = new Set(rules.map((r) => r.clause));
-  for (const clause of clauses) {
-    if (!ruledClauses.has(clause.id)) {
-      throw new CompilerRejection('schema', `clause ${clause.id} has no rule — an unenforceable clause is refused, not ignored`);
-    }
-  }
+  const unenforceable = clauses.filter((clause) => !ruledClauses.has(clause.id)).map((clause) => clause.text);
   const clauseNumber = (id: string) => Number.parseInt(id.slice(1), 10);
   const sortedRules = [...rules].sort((a, b) => clauseNumber(a.clause) - clauseNumber(b.clause));
 
@@ -304,10 +305,13 @@ export function parseCompiledPolicy(raw: string): ModelCompiledPolicy {
   if (!Array.isArray(unmapped) || !unmapped.every((s) => typeof s === 'string')) {
     throw new CompilerRejection('schema', 'unmapped must be an array of strings');
   }
-  if (unmapped.length > 0) {
+  // Deduped: a model that both lists a sentence under `unmapped` AND emits a
+  // rule-less clause for it must not make the human read it twice.
+  const allUnmapped = [...new Set([...unmapped, ...unenforceable])];
+  if (allUnmapped.length > 0) {
     throw new CompilerRejection(
       'unmapped',
-      `the policy contains ${unmapped.length} sentence(s) the rule set cannot express — refusing the whole policy:\n  - ${unmapped.join('\n  - ')}`,
+      `the policy contains ${allUnmapped.length} sentence(s) the rule set cannot express — refusing the whole policy:\n  - ${allUnmapped.join('\n  - ')}`,
     );
   }
 

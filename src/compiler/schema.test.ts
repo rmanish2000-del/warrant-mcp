@@ -41,10 +41,22 @@ test('unmapped sentences refuse the whole policy', () => {
   }, 'unmapped');
 });
 
-test('a clause without a rule is refused, not ignored', () => {
+test('a clause without a rule is refused, not ignored — as an unmapped sentence', () => {
+  // Reported as `unmapped` rather than `schema` so the review screen can give
+  // the same rewrite guidance either way the model reports the failure.
   expectRejection((d) => {
     d.rules.splice(1, 1);
-  }, 'schema');
+  }, 'unmapped');
+});
+
+test('a rule-less clause carries its own sentence into the refusal message', () => {
+  const draft = structuredClone(VALID);
+  draft.rules.splice(1, 1);
+  assert.throws(
+    () => parseCompiledPolicy(JSON.stringify(draft)),
+    (error: unknown) =>
+      error instanceof CompilerRejection && error.message.includes('Delete files only inside the workspace.'),
+  );
 });
 
 test('a rule citing an unknown clause is refused', () => {
