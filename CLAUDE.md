@@ -164,7 +164,35 @@ Two hard-won lessons, both found by attacking the thing in real sessions:
   pair is copied to `templates/` for `warrant-mcp init`; `paths.test.ts` pins that they
   match, because the root copy is not shipped and the template is.
 - Published as **`warrant-mcp`** on npm (MIT). `warrant` was taken.
-- Remote: `github.com/rmanish2000-del/warrant-mcp` — **private**. It becomes public only
-  by an explicit decision at submission, never as a side effect of a push. A full-history
-  scan across all commits found no secrets before the first push; re-run it before any
-  change of visibility.
+- Remote: `github.com/rmanish2000-del/warrant-mcp` — **public** (made public by
+  founder decision at submission time; a full-history secret scan was clean before
+  the first push). Everything committed here is visible to strangers the moment it
+  is pushed — write commits and files accordingly.
+
+## Parallel sessions: one directory, one branch, one owner
+
+Two Claude sessions sharing this directory has already cost work twice in one
+day — a `git checkout --` clobbered another session's uncommitted edits, and
+commit `fb62a5e` swept another session's in-flight files into a commit with an
+unrelated message. Git worktrees are the mechanism that prevents it; these are
+the rules a session follows.
+
+- **This directory (`warrant-mcp/`) is the main worktree and owns `main`.**
+- **The publishing workstream owns `../warrant-mcp-publishing`**, a linked
+  worktree on the `publishing` branch. Post, variants, publish-card work
+  happens there, never here.
+- Need a parallel workstream? Make a worktree, not a second opinion about
+  sharing: `git worktree add ../warrant-mcp-<purpose> -b <purpose>`, then
+  `npm install` inside it (node_modules is per-worktree). Merge to `main`
+  fast-forward when done, then `git worktree remove` the directory.
+- Git refuses to check out a branch another worktree already holds. That
+  refusal is the guardrail — never defeat it with `--force`.
+- In a tree you own: stage named paths only (already a rule above), and check
+  `git branch --show-current` before committing — a branch can have moved
+  under an earlier session's assumption, and S7's tree turned out to be on
+  `publishing` when a session believed it was on `main`.
+- **In a tree you do not own: touch nothing.** No `git switch`, no
+  `git checkout --`, no `git reset`, no `git stash`, no commits. Uncommitted
+  changes you did not make are another session's in-flight work — leave them
+  alone and say what you saw.
+- `git worktree list` names every directory and the branch it holds.
