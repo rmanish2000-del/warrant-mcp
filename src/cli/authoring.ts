@@ -135,7 +135,33 @@ function showFirstPolicy(policy: CompiledPolicy): void {
   for (const row of refusedByPolicy(policy, ctx())) out(`      ${row.label}: ${row.outcome}`);
 }
 
+/** The one command that needs a key. Say so before spending the user's time. */
+function missingApiKey(): boolean {
+  const key = process.env.ANTHROPIC_API_KEY ?? process.env.ANTHROPIC_AUTH_TOKEN ?? '';
+  return key.trim().length === 0;
+}
+
+function explainMissingKey(): void {
+  out();
+  out(paint(RED + BOLD, '  review needs an API key. Nothing was compiled or written.'));
+  out();
+  out('  This is the only command that calls the model — enforcement never compiles,');
+  out('  so init, test, accept, serve and the hook all keep working without a key.');
+  out();
+  out(`  ${paint(BOLD, 'Fix:')} set ANTHROPIC_API_KEY in your environment, then run review again.`);
+  out();
+  out('      export ANTHROPIC_API_KEY=...        # macOS / Linux');
+  out('      $env:ANTHROPIC_API_KEY = "..."      # PowerShell');
+  out();
+  out(`  ${paint(DIM, 'Get one at https://console.anthropic.com/settings/keys')}`);
+  out();
+}
+
 async function review(): Promise<number> {
+  if (missingApiKey()) {
+    explainMissingKey();
+    return 1;
+  }
   const policyText = readFileSync(POLICY_PATH, 'utf8');
   out(`Compiling ${POLICY_PATH} via ${COMPILER_MODEL}. This is the only command that compiles.`);
   out(paint(DIM, 'Nothing the hook reads is written unless you accept.'));
@@ -159,8 +185,19 @@ async function review(): Promise<number> {
       out(`  ${cause.message}`);
       return 1;
     }
+    const message = (cause as Error).message;
+    // The SDK's own auth error names five mechanisms and no fix. Translate it.
+    if (/authentication|api[- ]?key|401|unauthorized/i.test(message)) {
+      explainMissingKey();
+      out(`  ${paint(DIM, `The API client reported: ${message}`)}`);
+      out();
+      return 1;
+    }
     out(paint(RED + BOLD, '  COMPILE FAILED — nothing was written.'));
-    out(`  ${(cause as Error).message}`);
+    out(`  ${message}`);
+    out();
+    out(`  ${paint(BOLD, 'Fix:')} check your network and ANTHROPIC_API_KEY, then run review again.`);
+    out(`  ${paint(DIM, 'The active policy is untouched, so enforcement is unaffected either way.')}`);
     return 1;
   }
 

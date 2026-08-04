@@ -1,6 +1,6 @@
 {
   "name": "warrant-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Write the rules for your AI agent once, in plain English. Deterministic code checks every tool call, and a Claude Code hook blocks the ones your rules forbid.",
   "keywords": [
     "mcp",

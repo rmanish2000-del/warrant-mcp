@@ -37,10 +37,11 @@ Then open Claude Code in that directory and ask it to delete `.env`. The agent
 will genuinely try; the hook blocks the tool call before it executes, and the
 file is still there afterwards.
 
-**About a minute from an empty directory to that first refusal**, most of it
-`npm install`. Measured end to end on a Windows laptop: 58.6s, of which 47.4s
-was the install itself. With warrant-mcp already installed, roughly 10–15
-seconds. Your machine will differ; nothing here waits on a network or a model.
+**About forty seconds from an empty directory to that first refusal**, most of
+it `npm install`. Measured end to end on a Windows laptop, installing from npm:
+43.3s, of which 37.3s was the install itself — `init` took 2.6s and the check
+3.4s. Your machine will differ; nothing after the install waits on a network or
+a model.
 
 Changed your mind?
 
