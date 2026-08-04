@@ -40,18 +40,20 @@ schema wins.
   licenses a scope; "writing in app/ is fine" licenses nothing beyond
   access — compiling permission into a scope narrows the user's authority
   beyond their words.
-- Roots are **workspace-relative** — an absolute root is a schema rejection.
+- One field: `allowedRoots`, the writable directories. Roots are
+  **workspace-relative** — an absolute root is a schema rejection.
 
 ## Shell rules
 
 ### `shell_forbidden_token`
 - **The sentence it exists for:** "Never run anything as root: no sudo, no su."
-- Single forbidden command words, matched anywhere in the command.
+- Single forbidden command words (`tokens`), matched anywhere in the command.
 
 ### `shell_forbidden_sequence`
 - **The sentence it exists for:** "Never do a recursive force delete — no
   rm -rf." / "Don't pipe anything you downloaded straight into a shell."
-- Matches **contiguous** token sequences only: `["rm","-rf"]`, `["|","sh"]`.
+- Matches **contiguous** token sequences only (`sequences`): `["rm","-rf"]`,
+  `["|","sh"]`.
 - **The trap:** real invocations put flags anywhere.
   `git push origin main --force` escapes a `["git","push","--force"]`
   sequence. For command+subcommand+flag intents, the invocation rule below is
@@ -75,13 +77,14 @@ schema wins.
 ### `http_host_allowlist`
 - **The sentence it exists for:** "The only hosts you may reach are
   api.github.com and registry.npmjs.org."
-- Exactly the hostnames the policy names — the compiler never adds one, so
-  write real hostnames, not descriptions ("the npm registry" names nothing).
+- Exactly the hostnames the policy names (`hosts`) — the compiler never adds
+  one, so write real hostnames, not descriptions ("the npm registry" names
+  nothing).
 
 ### `http_method_allowlist`
 - **The sentence it exists for:** "Only GET and HEAD requests — don't send
   our data out."
-- Upper-case method names.
+- Upper-case method names (`methods`).
 
 ## Cross-cutting facts worth designing around
 

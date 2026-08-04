@@ -1,8 +1,10 @@
 ---
 name: warrant-policy-author
 description: >
-  Write a warrant-mcp policy in plain English that compiles on the first
-  attempt. Use when the user wants to create or edit .warrant/policy.md,
+  Write a warrant-mcp policy in plain English, shaped for the closed rule set
+  so review has the best chance of accepting it first time — only
+  `warrant-mcp review` can say whether it compiles. Use when the user wants to
+  create or edit .warrant/policy.md,
   write rules for what an AI agent may do in a project, or asks what
   warrant-mcp can and cannot enforce. Interviews the user, drafts numbered
   policy sentences that map cleanly onto the closed rule set, screens for the
