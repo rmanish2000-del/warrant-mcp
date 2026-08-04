@@ -126,6 +126,23 @@ anything expensive"* (needs world knowledge — the model deciding at runtime),
 sentences that shaped this vocabulary are in
 [demo/ten-sentences.md](demo/ten-sentences.md).
 
+### The format is specified separately
+
+[SPEC.md](SPEC.md) — **version 0.1.0**, versioned independently of this package
+— defines the compiled artifact, the exact matching semantics of all eight rule
+types, clause precedence, the fail-closed requirements, and what the format
+deliberately cannot express. Enforcement is explicitly out of its scope: a hook
+is one client's mechanism, not part of the format.
+
+**This repository is the reference implementation**, not the definition. Where
+the spec and this code disagree, the spec is what an implementer should trust
+and the disagreement is a bug here. [`spec/corpus.json`](spec/corpus.json) is the
+arbiter — 76 language-agnostic checks, run by this repo's own test suite, so
+this implementation cannot drift from the document without going red. **A second
+implementation would be welcome**: it is the only real evidence that the spec is
+precise enough to deserve the name, and the corpus is the only referee either
+side needs. [`spec/README.md`](spec/README.md) is the porting guide.
+
 ---
 
 ## Limitations — read this before relying on it
@@ -288,7 +305,7 @@ Requires Node ≥ 22.6. `npx warrant-mcp init` works without installing.
 ## Development
 
 ```bash
-npm test        # 98 tests
+npm test        # 187 tests, including the SPEC.md conformance corpus
 npm run typecheck
 npm run demo    # the canonical checks with verdict banners, fully offline
 ```

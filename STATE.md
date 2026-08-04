@@ -27,7 +27,11 @@ Each of these was run, not reasoned about.
   in `SECURITY-SURFACE.md`.
 - **Latency.** The decision is ~0.01ms. The Node process around it measured
   220–430ms median across three runs. `demo/bench.mjs` reproduces it.
-- **108 tests**, and `npm run typecheck` clean.
+- **The format is specified.** `SPEC.md` 0.1.0 defines the artifact, the
+  matching semantics and the fail-closed rules; `spec/corpus.json` is 76
+  language-agnostic checks that this repo runs against its own engine, so the
+  document and the code cannot drift apart silently.
+- **187 tests**, and `npm run typecheck` clean.
 
 ## Assumed, not verified
 
@@ -46,6 +50,11 @@ Each of these was run, not reasoned about.
   after the hook has decided. Structural: resolving it needs filesystem reads,
   and the deciding path imports no filesystem capability by design.
 - **Windows-only testing**, as above.
+- **A global flag taking a separate-word value defeats a subcommand rule.**
+  `git -c core.pager=cat push --force` is allowed where `git push --force` is
+  denied. Found while writing the spec, left unfixed on purpose, documented in
+  `SPEC.md` §3.3.5 and `SECURITY-SURFACE.md` §4.9, and pinned by a conformance
+  case so changing it has to be a deliberate spec bump.
 - **Other MCP clients.** Enforcement is a Claude Code hook. Anything else gets
   the `check_action` tool, which advises and does not enforce.
 - **The hook wiring is reachable from the workspace.** An agent with write

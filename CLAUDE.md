@@ -96,6 +96,31 @@ Violating any of these breaks the product claim, not just a test.
     vaults it under `~/.warrant/projects/<project>/`, read-only. Putting it
     back in the workspace would undo M5 and reopen M4 attack 8.
 
+## The format is a spec, versioned separately from the package
+
+[SPEC.md](SPEC.md) is at **0.1.0** and is versioned independently of
+`package.json`. Rules that hold:
+
+- **Enforcement is out of scope, permanently.** The spec covers the source
+  policy, the artifact and the evaluation contract. Hooks are one client's
+  mechanism; putting them in the spec would bind the format to one host's
+  lifecycle. Do not "helpfully" add an enforcement section.
+- **`spec/corpus.json` is the arbiter**, not this codebase. It is data on
+  purpose so another language can run it. `src/spec/conformance.test.ts` runs
+  it here, and fails if a schema rule type has no case.
+- **Where SPEC.md and `src/` disagree, SPEC.md is right** and `src/` has the
+  bug. Say so in an issue rather than quietly editing the spec to match.
+- **`skill-drift.test.ts` now pins schema.ts ↔ SPEC.md both directions**, plus
+  field names, the rule-type count in prose (skill reference, README, SPEC.md)
+  and the corpus/spec version agreement.
+- **Writing the spec found a real hole and it was left unfixed on purpose:**
+  `shell_forbidden_invocation` matches `subcommands` against the first non-flag
+  argument, so `git -c core.pager=cat push --force` slips a rule that denies
+  `git push --force`. SPEC.md §3.3.5, SECURITY-SURFACE.md §4.9, and conformance
+  case `invocation-separate-word-flag-value-displaces-the-subcommand`. Fixing it
+  needs per-command knowledge of which flags take values — a 0.2.0 decision, not
+  a patch.
+
 ## What is deliberately NOT claimed
 
 Read [SECURITY-SURFACE.md](SECURITY-SURFACE.md) before saying this stops
@@ -135,7 +160,7 @@ Two hard-won lessons, both found by attacking the thing in real sessions:
 
 ## Commands
 
-- `npm test` — full suite (currently **102 tests**). New test files must be
+- `npm test` — full suite (currently **187 tests**). New test files must be
   added to the script's explicit list; discovery is deliberate, not globbed.
 - `npm run typecheck` — `tsc --noEmit`, strict.
 - `npm run policy:review` / `policy:accept` / `policy:test -- "<action>"` —

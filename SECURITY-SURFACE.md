@@ -126,6 +126,19 @@ These are properties of the architecture, not bugs waiting on a patch.
    from changing between the verdict and the action.
 8. **The model's own refusals are not enforcement.** Attack 9 never reached
    the hook. A route the model declines is untested, not safe.
+9. **A global flag with a separate-word value displaces the subcommand
+   (found while writing SPEC.md, 4 August 2026 — not by an attack session).**
+   `shell_forbidden_invocation` matches `subcommands` against the *first
+   non-flag argument*. `git -c core.pager=cat push --force` puts
+   `core.pager=cat` in that position, so a rule forbidding
+   `git push --force` does not fire; `git --no-pager push --force` is denied,
+   because that flag consumes no value. Deliberately left as it is and
+   documented instead: closing it means knowing, per command, which flags take
+   values — knowledge this format does not carry and the model is not allowed
+   to supply at runtime. Specified in SPEC.md §3.3.5 and pinned by the
+   conformance case
+   `invocation-separate-word-flag-value-displaces-the-subcommand`, so a future
+   fix is a deliberate spec bump rather than a silent behaviour change.
 
 **What a real deployment needs on top:** OS-level confinement (container,
 seccomp/AppArmor, a read-only mount for everything outside the workspace, a

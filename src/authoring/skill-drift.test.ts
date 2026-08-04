@@ -22,6 +22,7 @@ import { POLICY_JSON_SCHEMA } from '../compiler/schema.ts';
 const PACKAGE_ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const SKILL_DIR = resolve(PACKAGE_ROOT, 'skills', 'warrant-policy-author');
 const RULE_SET_REFERENCE = resolve(SKILL_DIR, 'references', 'rule-set.md');
+const SPEC = resolve(PACKAGE_ROOT, 'SPEC.md');
 
 interface RuleVariant {
   readonly required: readonly string[];
@@ -65,6 +66,58 @@ test('every rule field name appears in the skill reference', () => {
   }
 });
 
+test('SPEC.md specifies exactly the rule types the schema defines, and no others', () => {
+  // SPEC.md is versioned separately and invites implementations in other
+  // languages. A rule type the schema has and the spec does not is behaviour
+  // nobody outside this repo could reproduce; a rule type the spec has and the
+  // schema does not is a promise to an implementer that this codebase breaks.
+  // Names only — whether section 3.3.5 describes matching correctly is a
+  // human's read, and the conformance corpus is what makes it checkable.
+  const schemaTypes = variants.map((variant) => variant.properties.type.const).sort();
+  const spec = readFileSync(SPEC, 'utf8');
+  const specified = [...spec.matchAll(/^#### 3\.3\.\d+ `([a-z_]+)`/gm)].map((match) => match[1] as string).sort();
+
+  assert.equal(new Set(specified).size, specified.length, 'SPEC.md gives a rule type two sections');
+  for (const type of schemaTypes) {
+    assert.ok(
+      specified.includes(type),
+      `schema rule type "${type}" has no section in SPEC.md — add a "#### 3.3.N \`${type}\`" section, and a case in spec/corpus.json`,
+    );
+  }
+  for (const type of specified) {
+    assert.ok(
+      schemaTypes.includes(type),
+      `SPEC.md specifies "${type}", which schema.ts no longer defines — the specification is describing a format this implementation does not implement`,
+    );
+  }
+});
+
+test('every rule field name is named in SPEC.md', () => {
+  const spec = readFileSync(SPEC, 'utf8');
+  for (const variant of variants) {
+    for (const field of variant.required.filter((name) => name !== 'type')) {
+      assert.ok(
+        spec.includes(`\`${field}\``),
+        `field "${field}" of rule "${variant.properties.type.const}" is never named in SPEC.md — an implementer reading only the spec would omit it`,
+      );
+    }
+  }
+});
+
+test('SPEC.md and the conformance corpus agree on the spec version', () => {
+  const spec = readFileSync(SPEC, 'utf8');
+  const declared = /\*\*Spec version (\d+\.\d+\.\d+)\.\*\*/.exec(spec)?.[1];
+  assert.ok(declared, 'SPEC.md does not declare a spec version in the expected form');
+  const corpus = JSON.parse(readFileSync(resolve(PACKAGE_ROOT, 'spec', 'corpus.json'), 'utf8')) as {
+    specVersion: string;
+  };
+  assert.equal(
+    corpus.specVersion,
+    declared,
+    'spec/corpus.json pins a different spec version than SPEC.md declares — a suite that claims to test a version it was not written for',
+  );
+});
+
 test('the marketplace manifest points at skill folders that exist, and npm ships them', () => {
   const manifest = JSON.parse(
     readFileSync(resolve(PACKAGE_ROOT, '.claude-plugin', 'marketplace.json'), 'utf8'),
@@ -88,6 +141,7 @@ test('the rule-type count stated in prose matches the schema', () => {
   for (const [label, file] of [
     ['the skill reference', RULE_SET_REFERENCE],
     ['the README', resolve(PACKAGE_ROOT, 'README.md')],
+    ['SPEC.md', SPEC],
   ] as const) {
     assert.match(
       readFileSync(file, 'utf8'),
