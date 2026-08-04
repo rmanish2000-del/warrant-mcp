@@ -12,7 +12,7 @@ Six routes got past it during the build. Five are closed, one is still open, and
 all of them are in [SECURITY-SURFACE.md](SECURITY-SURFACE.md), unsoftened.
 Yours will go in the same table with your name on it.
 
-**Open a [bypass report](../../issues/new?template=bypass.yml).** If it is
+**Open a [bypass report](https://github.com/rmanish2000-del/warrant-mcp/issues/new?template=bypass.yml).** If it is
 serious enough that a public issue would be irresponsible — a way past
 enforcement that works without the user noticing — see
 [SECURITY.md](SECURITY.md) instead.
@@ -51,7 +51,7 @@ I would rather publish a bypass I cannot fix than quietly own an unlisted one.
 
 ## A policy sentence that would not compile
 
-Not a bug — [tell me about it](../../issues/new?template=policy.yml). The
+Not a bug — [tell me about it](https://github.com/rmanish2000-del/warrant-mcp/issues/new?template=policy.yml). The
 compiler refuses a whole policy rather than approximate a sentence it cannot
 express, which is deliberate, but every refusal is either a gap in the rule
 vocabulary or a case where refusing is correct and the guidance should say so

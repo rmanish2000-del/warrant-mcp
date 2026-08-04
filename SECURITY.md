@@ -14,7 +14,7 @@ documented limit, and I would rather you told me about a new one.
 ## Report publicly by default
 
 Most bypasses should be a public
-[bypass report](../../issues/new?template=bypass.yml). The whole project runs on
+[bypass report](https://github.com/rmanish2000-del/warrant-mcp/issues/new?template=bypass.yml). The whole project runs on
 publishing what gets through, and a bypass in the open is worth more than one in
 my inbox.
 

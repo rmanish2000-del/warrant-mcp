@@ -8,7 +8,7 @@ body:
       value: |
         Thank you — genuinely. Six routes got past this during the build; five
         are closed and one is still open, all in
-        [SECURITY-SURFACE.md](../blob/main/SECURITY-SURFACE.md). Yours goes in
+        [SECURITY-SURFACE.md](https://github.com/rmanish2000-del/warrant-mcp/blob/main/SECURITY-SURFACE.md). Yours goes in
         the same table, credited to you, **including if it turns out to be
         structural and I cannot fix it.**
 
@@ -16,7 +16,7 @@ body:
         glob or variable expansion, obfuscation, symlinks, TOCTOU — it is a
         documented limit rather than a new finding. If it is a way past
         enforcement that leaves no trace, please use
-        [SECURITY.md](../blob/main/SECURITY.md) instead of this form.
+        [SECURITY.md](https://github.com/rmanish2000-del/warrant-mcp/blob/main/SECURITY.md) instead of this form.
 
   - type: textarea
     id: prompt
