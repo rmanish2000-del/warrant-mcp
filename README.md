@@ -224,7 +224,7 @@ A settings file it cannot parse is refused, not rewritten.
 
 | | |
 |---|---|
-| `warrant-mcp init` | wire up this project — no API key |
+| `warrant-mcp init` | wire up this project — no API key; `--skill` also installs the policy-authoring skill |
 | `warrant-mcp remove` | undo it, restoring settings byte-for-byte |
 | `warrant-mcp test "<action>"` | dry-run one action; nothing is enforced or written |
 | `warrant-mcp review` | compile the policy and show what changes (needs an API key) |
