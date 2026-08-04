@@ -20,8 +20,12 @@ platform. Reasoning is in `writing/README.md`.
       that a stranger can reproduce a refusal.
 - [ ] Open the canonical link in a logged-out browser. If it 404s, the repo is
       private again.
-- [ ] Confirm the numbers still match `SECURITY-SURFACE.md`: **nine sessions,
-      six got through, five closed, one still open.**
+- [ ] Confirm the numbers still match `SECURITY-SURFACE.md`. **Two numbers, kept
+      apart:** nine sessions, six got through, five closed, one open by
+      construction — **plus** one further route found later while writing
+      `SPEC.md`, not by attacking, also open on purpose. Never add them into
+      "seven in nine sessions"; every mention of the seventh states that the
+      spec found it.
 
 ---
 
@@ -110,7 +114,7 @@ once before posting, not during.
 **Never argue that something is secure.** Not once, not partially, not "well, in
 practice". The moment you defend the strength of the boundary you have swapped a
 credible post-mortem for a weak security claim, and you will lose — because the
-post itself lists six ways past it. If pushed: *"It's a policy layer, not a
+post itself lists seven ways past it. If pushed: *"It's a policy layer, not a
 sandbox — it belongs inside one, and the list of what still gets through is in
 the repo."* Then stop.
 

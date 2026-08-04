@@ -5,7 +5,7 @@ one exists. Short on purpose — a long reply reads as defensive, and under
 pressure the shortest true answer wins.
 
 Rule that governs all of them: **never argue that it is secure.** The post lists
-six ways past it. Defending the boundary trades a credible post-mortem for a
+seven ways past it. Defending the boundary trades a credible post-mortem for a
 weak security claim.
 
 ---
@@ -44,11 +44,12 @@ that came back blocked, and I'd assumed it rather than checked until then.
 
 > Partly fair, and worth being precise about which part.
 >
-> It's theatre if you read it as a boundary — it isn't one, six routes got past
-> it during the build and one of those is still open. It's not theatre as a
-> policy layer: the refusals are deterministic, they cite the clause that caused
-> them, and the list of what still gets through is in the repo rather than in a
-> footnote.
+> It's theatre if you read it as a boundary — it isn't one. Six routes got past
+> it during the build and one of those is still open; a seventh turned up the
+> next day when I wrote the spec, and that one is open on purpose too. It's not theatre
+> as a policy layer: the refusals are deterministic, they cite the clause that
+> caused them, and the list of what still gets through is in the repo rather
+> than in a footnote.
 >
 > The honest version of the claim is: this raises the cost of an unintended
 > destructive action and makes the intended boundary legible. It does not stop a
@@ -72,6 +73,36 @@ the half that isn't.
 > — provenance, cost, approval, and anything needing state across calls.
 
 If they ask what the rules are: eight types, listed in the README.
+
+---
+
+### "So `git -c core.pager=cat push --force` just works? That's a trivial fix."
+
+The question the addendum invites. Do not get defensive — it is the best
+question anyone can ask about the post.
+
+> It does work, yes, and the post says so with the three commands that show it.
+> `--no-pager` is denied because it consumes nothing; `-c` isn't, because its
+> value lands in the position the rule reads the subcommand from.
+>
+> It isn't trivial, and that's the interesting part. The fix needs a table of
+> which flags of which commands take a separate value — `git -c` does,
+> `git --no-pager` doesn't, and `docker`, `npm` and `kubectl` each have their
+> own. The format carries no per-command knowledge, and the one thing that could
+> produce that table on demand is a model, which is precisely what isn't allowed
+> near a runtime decision. A partial table would be worse than none: a rule that
+> fires on some spellings and silently not others.
+>
+> So it's specified, and pinned as a conformance case any implementation has to
+> reproduce. That makes fixing it a version bump, in the open, rather than a
+> matcher edit nobody notices.
+
+If they offer a fix: take it seriously and say so. A contributed
+command-to-flags table with a stated scope is genuinely the way this closes, and
+it is issue-shaped. Do not promise a timeline.
+
+If they say "you should have caught that": agree. Nine attack sessions did not,
+and writing the spec did — which is the argument the addendum makes.
 
 ---
 

@@ -35,7 +35,7 @@ that points at another platform.
 | File | What it is |
 |---|---|
 | `bypass-hunt.md` | the post — canonical |
-| `bypass-hunt-thread.md` | five posts, each under 280 characters |
+| `bypass-hunt-thread.md` | six posts, each under 280 characters |
 | `bypass-hunt-150.md` | short version for aggregator submissions |
 | `variants-hackernews.md` | title, author's first comment, likely objections |
 | `variants-reddit.md` | r/ClaudeAI and r/LocalLLaMA — separate posts, no cross-post language |
@@ -51,7 +51,14 @@ that points at another platform.
   experience, not about what once worked. The end-to-end time ranged 43–71s
   across runs, which is why the post gives a range rather than a figure.
 - Check the bypass count in every variant still matches `SECURITY-SURFACE.md`.
-  Six routes got through in the nine sessions; five are closed. An earlier draft
-  of the post said five got through, which was wrong.
+  **Two separate numbers, and they must not be added together anywhere:** six
+  routes got through in the nine adversarial sessions, of which five are closed;
+  and one further route was found later while writing `SPEC.md`, by stating what
+  a rule means rather than by attacking anything, and is open on purpose. Every
+  variant that mentions the seventh must say where it came from — that origin is
+  the interesting part, and folding it into "seven in nine sessions" would be a
+  false sentence. An earlier draft of the post said five got through, which was
+  also wrong; counts in this repo have drifted twice, so check rather than
+  assume.
 - Post the Hacker News comment yourself, immediately, as the author. A
   post-mortem submitted without the author present reads as a link drop.
