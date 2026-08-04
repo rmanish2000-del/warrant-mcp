@@ -163,6 +163,35 @@ Two hard-won lessons, both found by attacking the thing in real sessions:
   allowlisted so refusal sentences stay true (`cat .env` is not a destructive
   operation); `find` is deliberately not a reader.
 
+## What is deliberately NOT being made
+
+Marketing and presentation artifacts that have been considered and decided
+against. They are here rather than in `writing/` because this file is the one a
+session reads before it starts, and the whole purpose of the list is to be read
+*before* somebody proposes one again. A decision record nobody opens prevents
+nothing.
+
+**What would make any of these worth revisiting: a real user asking for it. Not
+a hunch that they might.** There are currently no users, so the trigger for
+every line below is the same and it has not fired.
+
+- **No logo.** A logo is a memory aid for something encountered repeatedly, and
+  nothing here is yet.
+- **No architecture diagrams.** The five numbered lines in the README already
+  say it.
+- **No demo video or GIF.** The three commands take under a minute on the
+  reader's own machine, and a video goes stale the first time the banner format
+  changes.
+- **No multi-page site.** Four pages of a hundred words is worse than one of six
+  hundred, and splitting means four things to keep in sync.
+- **No press kit.** Nobody is writing about this.
+- **No comparison tables.** They read as insecurity when you are the small one,
+  and they date instantly.
+- **No testimonials, user logos, star counts or download badges.** All of them
+  are zero, and a badge showing zero is worse than no badge.
+- **No newsletter or waitlist.** There is nothing to send and nothing to wait
+  for.
+
 ## Demo discipline
 
 - Beats, prompts and expected banners are pinned in [DEMO-CARD.md](DEMO-CARD.md).
@@ -208,6 +237,15 @@ Two hard-won lessons, both found by attacking the thing in real sessions:
   the installing project does not have. `skill-drift.test.ts` fails if either
   returns. To develop against the server in this repo, register it yourself
   with `claude mcp add` instead.
+- **Check CI after opening a PR. Local green is not final.** Run the suite
+  locally, then open the PR, then *watch the checks*. Learned the expensive way:
+  a PR on the sibling website repo was reported as verified on the strength of a
+  local run, and CI failed three jobs — a rule about third-party origins that no
+  local command runs, a broken-link check on an asset that did not exist yet,
+  and an accessibility assertion that passes locally and fails on the runner.
+  Every one of those was real. Where a repo has no CI — this one — `npm test`
+  and `npm run typecheck` are the authority, and they are run before the PR is
+  opened, not after.
 - **Never `git add -A`.** Name every path.
 - **Never read, print or echo `.env`.** Secrets stay in the environment.
 - **The npm token lives in the user-level `~/.npmrc` and nowhere else.** It is
