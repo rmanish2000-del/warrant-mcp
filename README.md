@@ -1,17 +1,15 @@
 # warrant-mcp
 
-A policy firewall for agent tool calls, as an MCP server. A human writes policy
-in plain English; Claude compiles it once into numbered clauses backed by
-structured rules; deterministic code checks every intended action against those
-rules and refuses the ones the policy doesn't allow, citing the governing
-clause. The model never decides at runtime.
+**Write the rules for your AI agent once, in plain English. Every tool call is
+checked against them, and the ones your rules forbid do not run.**
 
-Skeleton scope, deliberately: one tool, three action kinds, ALLOW/DENY only.
-No payments, no escalation, no UI. This reuses the thinking of
-[warrant](https://github.com/rmanish2000-del/warrant) (the deterministic
-authorization engine for agentic commerce); it does not fork it.
+An agent can already decide what to do. It cannot prove it was allowed to.
+Today that leaves two options: approve every tool call by hand, or trust the
+agent. warrant-mcp is the layer in between.
 
-## Install
+---
+
+## Sixty seconds
 
 ```bash
 npm install -g warrant-mcp
@@ -19,101 +17,89 @@ cd your-project
 warrant-mcp init
 ```
 
-That is the whole setup. `init` copies a starter policy, wires the PreToolUse
-hook into `.claude/settings.json` and the server into `.mcp.json`, and returns
-**enforcing** — it never compiles, so no API key is involved. Measured from an
-empty directory to a first refusal, offline: **59 seconds**, of which 47 is
-`npm install`.
+`init` returns **enforcing**. No API key, nothing compiled, nothing to paste.
 
-Then, one command that refuses:
+Now watch it refuse something:
 
 ```bash
 warrant-mcp test "delete .env"
 ```
 
-`init` **merges** — every key already in your settings file survives, and a
-file it cannot parse is refused rather than rewritten. It records the original
-bytes, so:
+```
+  DENY   clause W2
+      W2 — Do not touch the .env file or anything inside the .git directory.
+      Refused under clause W2: the file is named ".env", which is protected.
+
+  Dry run: nothing was enforced, executed, or written.
+```
+
+Then open Claude Code in that directory and ask it to delete `.env`. The agent
+will genuinely try; the hook blocks the tool call before it executes, and the
+file is still there afterwards.
+
+**About a minute from an empty directory to that first refusal**, most of it
+`npm install`. Measured end to end on a Windows laptop: 58.6s, of which 47.4s
+was the install itself. With warrant-mcp already installed, roughly 10–15
+seconds. Your machine will differ; nothing here waits on a network or a model.
+
+Changed your mind?
 
 ```bash
 warrant-mcp remove
 ```
 
-restores your settings file byte-for-byte and deletes what init created.
+Your settings file comes back byte-for-byte and everything `init` created is
+deleted. Try things you can undo.
 
-`npx warrant-mcp init` works too. Requires Node ≥ 22.6.
+---
 
-### What init touches
+## What just happened
 
-| Path | |
-|---|---|
-| `.warrant/policy.md` | your policy in plain English — edit this |
-| `.warrant/config.json` | a pointer to the compiled policy |
-| `.claude/settings.json` | PreToolUse hook appended (merged) |
-| `.mcp.json` | `warrant` server added (merged) |
-| `~/.warrant/projects/<project>/` | **the compiled policy, read-only, outside your project** |
+1. You write rules in plain English — `.warrant/policy.md`.
+2. Claude compiles them **once, off stage**, into numbered clauses backed by
+   structured rules, and refuses to guess where a sentence is ambiguous.
+3. Deterministic code evaluates every proposed action against those clauses and
+   returns allow or deny, naming the clause that decided.
+4. A Claude Code `PreToolUse` hook turns a deny into a hard block — the tool
+   call never runs, and the deny overrides even an `--allowedTools` allowlist.
+5. **The model never makes the runtime call.** Claude compiles the policy; code
+   decides. The evaluator's input type does not even carry the clause text, so
+   a model-written sentence structurally cannot reach a decision — that is a
+   compile error, not a convention.
 
-That last row is the one that matters. The compiled policy is the thing that
-does the refusing, so it does not live where the agent works — an agent that
-can delete its own policy can disarm what stops it. The same directory holds
-the backup of your settings file and the record `remove` reads.
+**The compiled policy lives outside your project** — `~/.warrant/projects/<project>/`,
+read-only — because an agent that can delete the policy governing it can disarm
+the thing that stops it, and out there the policy's own "stay inside the
+project" clause guards it.
 
-**Where an installed instance looks for your policy**, in order:
+---
 
-1. `WARRANT_MCP_POLICY` — an absolute path. `init` writes this into both
-   generated configs, so a client that spawns the server from an arbitrary
-   directory still finds the right policy.
-2. `<cwd>/.warrant/config.json` — the pointer `init` writes, naming the vault
-   outside the project.
-3. `<cwd>/.warrant/policy-compiled.json` — a simple in-project layout, for
-   anyone who prefers it.
-4. `<package>/policy-compiled.json` — present only in a source checkout of this
-   repository. It is deliberately **not** shipped in the tarball, so an
-   installed copy can never silently enforce the sample policy; the sample
-   ships under `templates/` and only `init` copies it.
+## Changing the rules
 
-If none resolve, the server refuses to start and the hook denies. A missing
-policy is a refusal, never a pass.
+Edit `.warrant/policy.md` in your own words, then:
 
-## The one structural rule
+```bash
+warrant-mcp review     # compiles, shows every clause and what changes in behaviour
+warrant-mcp accept     # adopt it
+```
 
-> Claude compiles policy and explains nothing at runtime. **Deterministic code
-> evaluates proposed actions.** If a description and the evaluator disagree,
-> the evaluator wins.
+`review` is the **only** command that calls the model, and it is the only one
+that needs `ANTHROPIC_API_KEY`. Enforcement never compiles — not at startup,
+not per call, not ever. It shows you each clause in plain English, and then
+what actually changes: which previously-allowed actions are now refused and
+which refusals are now permitted, derived by running a fixed corpus through
+both policies rather than by diffing text. Nothing the hook reads is written
+until you accept.
 
-Enforced at the type boundary, not by convention: the evaluator's input type
-is `EvaluablePolicy = Omit<CompiledPolicy, 'clauses'>` — the compiled English
-lives only in `clauses`, so `evaluate()` reading a clause sentence is a
-**compile error**, not a code-review catch. Belt and braces, the server also
-narrows by explicit field copy (`toEvaluable`) before every call, so the
-English is physically absent from the object the evaluator receives, and
-`guard.test.ts` pins that the deciding modules import no filesystem, no
-process spawning, and no network capability at all.
+If a sentence cannot be expressed as an enforceable rule, the compiler refuses
+**the whole policy** and tells you what it can express nearby. A sentence that
+silently compiled to nothing would read as protection you do not have.
 
-## The tool
-
-`check_action` — input is an intended action as structured data:
-
-| kind | fields |
-|---|---|
-| `file_delete` | `path` |
-| `shell_command` | `command` |
-| `http_request` | `url`, `method` |
-
-Output: `ALLOW` or `DENY`, the governing clause id and text when denied, and a
-one-sentence plain-English reason built only from facts the evaluator
-produced. Malformed input fails closed (`DENY`, reason `INVALID_ACTION`) —
-including unknown kinds. Caller extras like `execute: true` are stripped by
-allowlist copy before evaluation and can force nothing.
-
-`check_action` only checks. There is no code path from any verdict to an
-execution: the deciding modules cannot touch a file, spawn a process, or open
-a connection, because they import nothing that could.
+---
 
 ## What a policy can say
 
-The compiler maps plain English onto a **closed set of eight rule types** —
-pure data, no free text, no model-supplied patterns:
+Eight closed rule types — pure data, no free text, no model-supplied patterns:
 
 | Rule | The sentence it exists for |
 |---|---|
@@ -126,213 +112,144 @@ pure data, no free text, no model-supplied patterns:
 | `http_host_allowlist` | "Only talk to these hosts." |
 | `http_method_allowlist` | "GET and HEAD only." |
 
-`shell_forbidden_invocation` matches command + subcommand + flag
-**order-independently**, because `git push origin main --force` and
-`git push --force origin main` are the same intent — a contiguous sequence
-rule catches only one of them.
-
-Some sentences people write cannot be decided from the action alone, and the
-compiler is required to refuse rather than approximate them: "don't delete
-anything you didn't create" (needs provenance), "don't do anything that costs
-money" (needs world knowledge — the model deciding at runtime), "ask me
-first" (needs an escalation verdict this system deliberately does not have),
-"don't change more than ten files" (needs cross-call state). The reasoning,
-and the ten sentences that drove this vocabulary, are in
+Some things people write cannot be decided from the action alone, and the
+compiler refuses them rather than approximating: *"don't delete anything you
+didn't create"* (needs provenance the evaluator does not have), *"don't do
+anything expensive"* (needs world knowledge — the model deciding at runtime),
+*"ask me first"* (needs a third verdict this deliberately does not have),
+*"don't change more than ten files"* (needs state across calls). The ten
+sentences that shaped this vocabulary are in
 [demo/ten-sentences.md](demo/ten-sentences.md).
 
-## Writing a policy (the authoring loop)
+---
 
-Three commands, for someone who has never seen this project:
+## Limitations — read this before relying on it
 
-```bash
-npm run policy:review
-```
+**This is a policy layer, not a sandbox. It should be deployed inside one.**
 
-Compiles [policy.md](policy.md) live — **the one place compiling is correct,
-because a human is present and deciding** — then shows every clause numbered,
-every rule under it *in plain English rather than JSON*, and what changes in
-**behaviour** against the previous policy. Nothing the hook reads is written
-unless you accept; the draft waits in `policy-compiled.pending.json`, which
-the server and hook never read. In a non-interactive shell it never guesses
-consent — it holds the draft and tells you the next command.
+Nine adversarial sessions were run against it; five bypasses were found and
+closed, each with a regression test. These classes remain open by construction,
+and are properties of the architecture rather than bugs awaiting a patch:
 
-```bash
-npm run policy:test -- "delete .env"
-npm run policy:test -- "shell git push origin main --force"
-npm run policy:test -- "http GET https://example.com"
-npm run policy:test -- --pending "delete .env"
-```
+- **Shell glob and variable expansion.** The hook sees `rm -f *`; the shell
+  expands it after the decision. Same for `$VAR`, command substitution and
+  `xargs`. Any command with implicit targets — `git clean -fdx`, `make clean` —
+  is in this class.
+- **Obfuscation.** Base64, string concatenation inside an interpreter
+  (`'.'+'env'`), homoglyphs and self-writing scripts defeat a tokenizer. The
+  checks raise the cost; they do not close the class.
+- **Symlinks.** Path text is compared, never resolved, so a symlink inside the
+  project pointing out of it passes the workspace clause.
+- **Coverage is per-tool and per-client.** Only Claude Code tool calls are
+  hooked. A new tool, another MCP client, an unusual field name, or a process
+  that outlives the session are all outside. Two of the five bypasses found
+  were exactly this shape, which is the best evidence that the list above is
+  not exhaustive.
+- **Network egress is only as good as the mapping.** Tool-driven fetches are
+  covered; an MCP server's own outbound calls are not.
+- **TOCTOU.** The check runs before execution; the world can change in between.
+- **The model's own refusals are not enforcement.** A route the model declines
+  is untested, not safe.
+- **The hook configuration is a file in your project**, so an agent with write
+  access can edit it. Org-managed settings are the real answer.
 
-Dry-runs one action against the active policy (or the pending draft) and
-prints the verdict with the governing clause. Nothing is enforced, executed,
-or written. It never guesses a kind from content — an input it does not
-recognise is refused with usage, so the dry run always tests what you typed.
+A real deployment wants OS-level confinement, an egress proxy enforcing the
+host list at the network layer, hook settings the agent cannot edit, and an
+append-only record of verdicts. The full attack log and reasoning are in
+[SECURITY-SURFACE.md](SECURITY-SURFACE.md), unsoftened.
 
-```bash
-npm run policy:accept
-```
+---
 
-Promotes the reviewed draft to active. **Never compiles** — a re-validated
-file copy.
+## The MCP tool
 
-**The behaviour diff** is derived, not textual: every action in
-[src/authoring/corpus.ts](src/authoring/corpus.ts) is evaluated against both
-policies with the same pure evaluator the hook uses, and the difference is
-reported in three directions — now refused, now allowed (flagged as
-*widening authority*), and still refused but under a different clause. A
-reworded policy that enforces the same thing reports "no behaviour change",
-which is exactly what a text diff cannot tell you.
+Beyond the hook, warrant exposes one tool, `check_action`, so an agent can ask
+before acting:
 
-**When the compiler refuses**, the review screen shows the offending
-sentence, what the rule set can express nearby, and a concrete rewrite to
-paste. Rule-less clauses and model-declared `unmapped` sentences converge on
-that same screen, so it never matters which way the failure was reported.
+| kind | fields |
+|---|---|
+| `file_delete` | `path` |
+| `shell_command` | `command` |
+| `http_request` | `url`, `method` |
 
-## Policy lifecycle
+It returns `ALLOW` or `DENY` with the governing clause and a one-sentence
+reason. It only checks — there is no code path from any verdict to an
+execution, because the deciding modules import nothing that could touch a file,
+spawn a process, or open a connection. Malformed input fails closed. The hook
+is what makes a refusal binding; the tool is how an agent can ask politely.
 
-1. **Write** — [policy.md](policy.md), plain English, human-owned.
-2. **Compile** — `npm run policy:fresh` (needs `ANTHROPIC_API_KEY` in `.env`
-   or the environment). Claude maps each sentence to clauses `W1…Wn` and
-   structured rules from a **closed rule set** (path containment, protected
-   names, forbidden shell tokens/sequences, host and method allowlists — pure
-   data, no regexes, no code). A sentence the rule set cannot express is
-   returned as `unmapped` and the whole compile is **refused** — never
-   approximated. A failed compile caches nothing; there is no stub fallback,
-   deliberately: a made-up enforcement policy is worse than none.
-3. **Review** — the compiled clauses and rules print on compile and via
-   `npm run policy:show`. The cache ([policy-compiled.json](policy-compiled.json))
-   is committed; committing the reviewed cache is the confirmation step.
-4. **Enforce** — the server replays the cache. It never compiles: cached
-   replay is the only path (`compile.ts` is not even imported by the server),
-   and a missing or invalid cache is a loud startup refusal. The cache is
-   re-validated on every load, so a hand-edited cache that no longer passes
-   the schema is refused the same way a bad compile is.
+---
 
-The compiler never emits a machine path: the workspace root is stamped by the
-system at server start (env `WARRANT_MCP_WORKSPACE`, defaulting to the
-server's working directory) — the same discipline as warrant's rule that the
-model may not set its own mandate's validity.
+## Where the policy is looked for
 
-Divergence from warrant, on purpose: warrant gitignores its compile cache
-(nothing generated is committed); here the cache **is** committed, because the
-cache is the reviewed, enforceable artifact and a fresh clone must enforce
-without an API key.
+1. `WARRANT_MCP_POLICY` — an absolute path. `init` writes this into both
+   generated configs, so a client spawning the server from any directory finds
+   the right policy.
+2. `.warrant/config.json` — the pointer `init` writes, naming the vault.
+3. `.warrant/policy-compiled.json` — a simple in-project layout, if you prefer.
+4. The package's own copy — only present in a source checkout; never shipped,
+   so an installed copy cannot silently enforce the sample.
 
-## Connect it to Claude Code
+If none resolve, the server refuses to start and the hook denies. A missing
+policy is a refusal, never a pass.
 
-From this directory:
+## What `init` touches
 
-```bash
-claude mcp add warrant -- node --experimental-strip-types C:/Push-to-Prod-2026/warrant-mcp/src/server/main.ts
-```
+| Path | |
+|---|---|
+| `.warrant/policy.md` | your policy — edit this |
+| `.warrant/config.json` | pointer to the compiled policy |
+| `.claude/settings.json` | hook appended, **merged** — your other settings survive |
+| `.mcp.json` | `warrant` server added, merged |
+| `~/.warrant/projects/<project>/` | the compiled policy (read-only), your settings backup, and the record `remove` reads |
 
-(Adjust the absolute path to your clone. Or just open Claude Code inside this
-repo — [.mcp.json](.mcp.json) registers the server automatically; approve it
-when prompted.)
+A settings file it cannot parse is refused, not rewritten.
 
-Then ask Claude to check an action before it acts:
-
-> Use check_action to check `{ "kind": "shell_command", "command": "sudo rm -rf /" }`.
-
-Requirements: Node ≥ 22.6 (`--experimental-strip-types`; no build step), and
-`npm install` once. Optionally set `WARRANT_MCP_WORKSPACE` in the server's
-env to pin the workspace the file rules are anchored to.
-
-## Hard enforcement via Claude Code hooks (M2)
-
-`check_action` advises; the PreToolUse hook **enforces**. Claude Code runs
-[src/hook/pretooluse.ts](src/hook/pretooluse.ts) before executing a matched
-tool call ([hooks reference](https://code.claude.com/docs/en/hooks)); a
-`permissionDecision: "deny"` on stdout blocks the call outright — it
-overrides even an `--allowedTools` allowlist, so a DENY means the action
-does not happen regardless of what the agent decides.
-
-Wire it into any project's `.claude/settings.json`:
-
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit|WebFetch|mcp__.*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node --experimental-strip-types 'C:/Push-to-Prod-2026/warrant-mcp/src/hook/pretooluse.ts'",
-            "timeout": 60
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-Optional env (set inline in the command string): `WARRANT_MCP_POLICY` pins a
-project-local compiled cache; `WARRANT_MCP_WORKSPACE` overrides the workspace
-root (default: the session's cwd, from the hook's stdin payload).
-
-How tool calls map onto the engine (adapter in
-[src/hook/adapter.ts](src/hook/adapter.ts); evaluation is the unchanged M1
-engine):
-
-- **Bash / PowerShell** — the whole command is checked as `shell_command`;
-  additionally, every path a deleter command removes (`rm` family and the
-  PowerShell `Remove-Item` family) and every `>`/`>>` redirect target is
-  checked as `file_delete` (an overwrite destroys what was there). PowerShell
-  coverage exists because an M3 rehearsal caught the model deleting a
-  protected file through the unmatched PowerShell tool — match every shell
-  your client exposes.
-- **Write / Edit / MultiEdit / NotebookEdit** — the target path is checked as
-  `file_delete` under the destructive-file-operation clauses (W1/W2 are
-  worded "create, overwrite, or delete" for exactly this reason).
-
-Decision surface, deliberately asymmetric: DENY blocks with the projector
-banner as the reason (shown to the human in the transcript and to the model);
-anything else exits silently, so Claude Code's **own permission flow still
-applies** — Warrant vetoes, it never approves. Every internal failure
-(missing policy, unreadable input, invalid cache) also denies: fail closed.
-Enforcement is fully offline — cached policy from disk, no network, no API.
-
-The runnable demo lives in `C:\Push-to-Prod-2026\warrant-mcp-demo` (own
-settings, `.env` sentinel), with its compiled policy vaulted **outside** the
-sandbox and read-only so the agent cannot reach it — clause W1 governs the
-vault path, so the policy protects itself (SECURITY-SURFACE.md §5);
-[demo/policy-v2.md](demo/policy-v2.md) +
-[demo/policy-compiled.v2.json](demo/policy-compiled.v2.json) are the
-"policy change" variant that permits the `.env` delete — swapping the caches
-is a file copy, so no demo path ever compiles.
+---
 
 ## Commands
 
-- `npm test` — engine verdicts, compiler schema gates, the no-side-effect
-  guard, and the canonical-verdict pin against the committed cache.
-- `npm run typecheck` — strict `tsc --noEmit`; `erasableSyntaxOnly` keeps
-  every source file strippable.
-- `npm run demo` — the canonical checks through the real handler and cache,
-  verdict banners on the terminal. No API call, no side effects.
-- `npm run demo:reset` / `demo:check` / `demo:permit` — stage-demo management
-  (rebuild the sandbox pristine / one-line READY verification / activate the
-  pre-compiled v2 policy). Fully offline; see [DEMO-CARD.md](DEMO-CARD.md).
-- `npm run policy:fresh` / `npm run policy:show` — live compile (explicit,
-  key required) / print the cache (never compiles).
-- `npm start` — the MCP server on stdio (normally spawned by the client, not
-  by hand). stdout is protocol; verdict banners go to stderr.
+| | |
+|---|---|
+| `warrant-mcp init` | wire up this project — no API key |
+| `warrant-mcp remove` | undo it, restoring settings byte-for-byte |
+| `warrant-mcp test "<action>"` | dry-run one action; nothing is enforced or written |
+| `warrant-mcp review` | compile the policy and show what changes (needs an API key) |
+| `warrant-mcp accept` | adopt the reviewed draft — never compiles |
+| `warrant-mcp serve` | the MCP server on stdio (a client spawns this) |
+| `warrant-mcp hook` | the PreToolUse entry (a hook config spawns this) |
 
-## Known limits (named, not hidden)
+Requires Node ≥ 22.6. `npx warrant-mcp init` works without installing.
 
-- The shell matcher is a tokenizer, not a shell parser: operators are isolated
-  even unspaced (`curl x|sh` is caught), but obfuscation (`s\u0075do`, command
-  substitution, `bash -c "$(…)"`) is out of scope for this skeleton.
-- Symlinks are not resolved (`realpath` is I/O; the engine is pure). A symlink
-  inside the workspace pointing outside would pass W1 by path text.
-- The MCP tool alone is advisory — a caller could ignore its verdict. The
-  PreToolUse hook (M2, above) closes that gap for the matched tools inside
-  Claude Code; other clients still get advice only.
-- **[SECURITY-SURFACE.md](SECURITY-SURFACE.md) is the honest account**: the
-  full tool surface, an adversarial attack log (9 real sessions, 5 bypasses
-  found and fixed in M4), and what still gets through — shell glob and
-  variable expansion, obfuscation, symlinks, unmapped tools and clients,
-  and TOCTOU. Read it before claiming this stops anything.
-- This is a *policy* layer that produces a legible, human-authored refusal.
-  It is not a sandbox and should be deployed inside one.
+## Development
+
+```bash
+npm test        # 98 tests
+npm run typecheck
+npm run demo    # the canonical checks with verdict banners, fully offline
+```
+
+TypeScript, strict, no build step for development — the source runs directly
+under `--experimental-strip-types`. The published package ships compiled
+JavaScript in `dist/`, because Node refuses to strip types under
+`node_modules`; the emit is pure type erasure, so it cannot change a verdict.
+
+## Prior work
+
+Everything in this repository was written **before** the Push to Prod hackathon
+(8 August 2026, Bengaluru) that it was built for. The state at the end of the
+core build is tagged `pre-event-2026-08-08`:
+
+```bash
+git log pre-event-2026-08-08..HEAD
+```
+
+Commit dates are the record. The deterministic authorization engine and the
+plain-English-to-clauses approach come from an earlier project of mine,
+[warrant](https://github.com/rmanish2000-del/warrant), built for a payments
+hackathon on 1–2 August 2026 and public. warrant-mcp is a separate repository
+that applies that thinking to agent tool calls; it does not fork or vendor that
+codebase.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

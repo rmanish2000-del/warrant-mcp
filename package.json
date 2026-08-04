@@ -1,18 +1,21 @@
 {
   "name": "warrant-mcp",
   "version": "0.1.0",
-  "description": "A policy firewall for AI agent tool calls. Write the rules once in plain English; deterministic code refuses what they do not allow, citing the clause, and a Claude Code hook makes the refusal a hard block.",
+  "description": "Write the rules for your AI agent once, in plain English. Deterministic code checks every tool call, and a Claude Code hook blocks the ones your rules forbid.",
   "keywords": [
     "mcp",
     "model-context-protocol",
     "claude",
     "claude-code",
+    "anthropic",
     "ai-agent",
-    "agent-security",
+    "agent-guardrails",
+    "guardrails",
     "policy",
     "permissions",
-    "guardrails",
-    "hook"
+    "ai-safety",
+    "hook",
+    "llm"
   ],
   "homepage": "https://github.com/rmanish2000-del/warrant-mcp#readme",
   "bugs": "https://github.com/rmanish2000-del/warrant-mcp/issues",
