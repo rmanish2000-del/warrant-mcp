@@ -47,6 +47,7 @@ const USAGE = `warrant-mcp — a policy firewall for AI agent tool calls
 
   warrant-mcp init                 wire this project up — policy, hook, MCP server.
                                    No API key needed; enforcing when it returns.
+                                   [--skill also installs the policy-authoring skill]
   warrant-mcp remove               undo init and restore your settings file
   warrant-mcp serve                run the MCP server on stdio (a client spawns this)
   warrant-mcp hook                 the PreToolUse hook entry (a hook config spawns this)

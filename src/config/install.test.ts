@@ -46,8 +46,8 @@ function stage(withSettings: boolean): Stage {
   return { project, home };
 }
 
-const run = (entry: string, { project, home }: Stage) =>
-  spawnSync(process.execPath, ['--experimental-strip-types', entry], {
+const run = (entry: string, { project, home }: Stage, args: readonly string[] = []) =>
+  spawnSync(process.execPath, ['--experimental-strip-types', entry, ...args], {
     cwd: project,
     env: { ...process.env, WARRANT_MCP_HOME: home },
     encoding: 'utf8',
@@ -137,6 +137,58 @@ test('running init twice refuses rather than duplicating the hook', () => {
   assert.equal(second.status, 1);
   assert.match(second.stdout, /already initialised/);
   assert.match(second.stdout, /warrant-mcp remove/);
+});
+
+test('init without --skill and without a TTY does not install the skill, or mention it', () => {
+  const s = stage(false);
+  const result = run(INIT, s);
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(
+    !existsSync(join(s.project, '.claude', 'skills')),
+    'a non-interactive init must never install the skill silently',
+  );
+  assert.doesNotMatch(result.stdout, /skill/i, 'the closing message must not lengthen when nothing was installed');
+});
+
+test('init --skill installs the skill; remove takes exactly it away, sparing a neighbour', () => {
+  const s = stage(false);
+  // Somebody else's skill, with deliberate formatting, already in the project.
+  const neighbour = join(s.project, '.claude', 'skills', 'my-notes', 'SKILL.md');
+  const neighbourBytes = '---\nname: my-notes\n---\n\nNot warrant’s.  \n';
+  mkdirSync(join(s.project, '.claude', 'skills', 'my-notes'), { recursive: true });
+  writeFileSync(neighbour, neighbourBytes, 'utf8');
+
+  const result = run(INIT, s, ['--skill']);
+  assert.equal(result.status, 0, result.stderr);
+  const skillDir = join(s.project, '.claude', 'skills', 'warrant-policy-author');
+  assert.ok(existsSync(join(skillDir, 'SKILL.md')), 'the skill must be installed on opt-in');
+  assert.ok(existsSync(join(skillDir, 'references', 'rule-set.md')), 'references must come along');
+  assert.match(result.stdout, /policy-authoring skill/, 'the closing message mentions the install, once');
+
+  assert.equal(run(REMOVE, s).status, 0);
+  assert.ok(!existsSync(skillDir), 'remove must take the installed skill away, directories included');
+  assert.equal(
+    readFileSync(neighbour, 'utf8'),
+    neighbourBytes,
+    'an unrelated skill must survive init-then-remove byte-identical',
+  );
+  assert.ok(existsSync(join(s.project, '.claude', 'skills', 'my-notes')), 'the neighbour folder stays');
+});
+
+test('init --skill never overwrites an existing folder of the same name', () => {
+  const s = stage(false);
+  const theirs = join(s.project, '.claude', 'skills', 'warrant-policy-author', 'SKILL.md');
+  const theirBytes = '# mine, edited\n';
+  mkdirSync(join(s.project, '.claude', 'skills', 'warrant-policy-author'), { recursive: true });
+  writeFileSync(theirs, theirBytes, 'utf8');
+
+  const result = run(INIT, s, ['--skill']);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /already existed — left untouched/);
+  assert.equal(readFileSync(theirs, 'utf8'), theirBytes, 'an existing skill folder is never overwritten');
+
+  assert.equal(run(REMOVE, s).status, 0);
+  assert.equal(readFileSync(theirs, 'utf8'), theirBytes, 'and remove must not touch it either');
 });
 
 test('review without an API key names the fix instead of leaking the SDK error', () => {

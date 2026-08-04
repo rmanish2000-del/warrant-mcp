@@ -35,6 +35,11 @@ export const PACKAGE_ROOT = fileURLToPath(new URL('../..', import.meta.url));
 export const TEMPLATE_POLICY_SOURCE = join(PACKAGE_ROOT, 'templates', 'policy.md');
 export const TEMPLATE_POLICY_COMPILED = join(PACKAGE_ROOT, 'templates', 'policy-compiled.json');
 
+/** The policy-authoring skill `init` offers to copy — opt-in only. Ships in the tarball. */
+export const TEMPLATE_SKILL_DIR = join(PACKAGE_ROOT, 'skills', 'warrant-policy-author');
+export const projectSkillsRoot = (cwd: string): string => join(resolve(cwd), '.claude', 'skills');
+export const projectSkillDir = (cwd: string): string => join(projectSkillsRoot(cwd), 'warrant-policy-author');
+
 /** The per-project directory. Everything a user owns lives here, next to their code. */
 export const PROJECT_DIR_NAME = '.warrant';
 

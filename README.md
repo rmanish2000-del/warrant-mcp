@@ -185,8 +185,11 @@ is what makes a refusal binding; the tool is how an agent can ask politely.
 The package ships a Claude Skill, [skills/warrant-policy-author](skills/warrant-policy-author/SKILL.md),
 that teaches Claude the authoring craft: a short interview, sentences shaped
 for the closed rule set, and the failure shapes above explained rather than
-just avoided. Copy or link the folder into your project's `.claude/skills/`
-to use it. The skill writes policy text only — it never enforces anything,
+just avoided. `init` offers to install it into your project's
+`.claude/skills/` (opt-in — say yes at the prompt, or pass `init --skill`;
+an existing folder of the same name is never overwritten, and `remove` takes
+away exactly what was installed). You can also copy or link the folder by
+hand. The skill writes policy text only — it never enforces anything,
 and it never claims a sentence will compile. `warrant-mcp review` is the
 authority; if review refuses, the refusal is right.
 

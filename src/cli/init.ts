@@ -15,18 +15,22 @@
  *
  * Every failure path names the fix.
  */
-import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, relative, resolve } from 'node:path';
+import { createInterface } from 'node:readline/promises';
+import { dirname, join, relative, resolve } from 'node:path';
 import process from 'node:process';
 import { readPolicyCache } from '../compiler/cache.ts';
 import {
   PACKAGE_ROOT,
   TEMPLATE_POLICY_COMPILED,
   TEMPLATE_POLICY_SOURCE,
+  TEMPLATE_SKILL_DIR,
   projectConfig,
   projectDir,
   projectPolicySource,
+  projectSkillDir,
+  projectSkillsRoot,
   vaultFor,
   vaultManifest,
   vaultPolicy,
@@ -67,6 +71,7 @@ function stop(problem: string, fix: string): never {
 
 const cwd = resolve(process.cwd());
 const force = process.argv.includes('--force');
+const skillFlag = process.argv.includes('--skill');
 const home = process.env.WARRANT_MCP_HOME ?? homedir();
 
 const SETTINGS = resolve(cwd, '.claude', 'settings.json');
@@ -148,6 +153,25 @@ try {
   throw cause;
 }
 
+// Decide about the optional skill BEFORE writing anything, so the write phase
+// stays contiguous. Opt-in only — the --skill flag, or a yes at the prompt. A
+// non-interactive run without the flag never installs it, silently or otherwise.
+let wantSkill = skillFlag;
+if (!wantSkill && (process.stdin.isTTY ?? false)) {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const answer = (
+    await rl.question(`  Also install the policy-authoring skill for Claude into .claude/skills/? ${paint(BOLD, '[y/N]')} `)
+  ).trim().toLowerCase();
+  rl.close();
+  wantSkill = answer === 'y' || answer === 'yes';
+}
+if (wantSkill && !existsSync(TEMPLATE_SKILL_DIR)) {
+  stop(
+    `the policy-authoring skill is missing from the installed package at ${PACKAGE_ROOT}.`,
+    'reinstall the package: npm install -g warrant-mcp',
+  );
+}
+
 // ---- from here on, we write ------------------------------------------------
 
 const created: string[] = [];
@@ -193,6 +217,41 @@ for (const [path, before, merged, label] of [
   writeFileSync(path, serialize(merged.settings), 'utf8');
 }
 
+// The optional skill. Copied file by file so the manifest records exactly what
+// arrived; directories init had to make are recorded separately so `remove` can
+// take them away only when they are empty again. An existing folder of the same
+// name is never overwritten — not even under --force: it is the user's, and a
+// skill is advice, so a stale copy costs correctness of nothing.
+const createdDirs: string[] = [];
+let skillOutcome: 'installed' | 'exists' | null = null;
+if (wantSkill) {
+  const skillDest = projectSkillDir(cwd);
+  if (existsSync(skillDest)) {
+    skillOutcome = 'exists';
+  } else {
+    const ensureDir = (dir: string) => {
+      if (existsSync(dir)) return;
+      mkdirSync(dir, { recursive: true });
+      createdDirs.push(dir);
+    };
+    ensureDir(projectSkillsRoot(cwd));
+    const walk = (source: string, dest: string): void => {
+      ensureDir(dest);
+      for (const entry of readdirSync(source, { withFileTypes: true })) {
+        const from = join(source, entry.name);
+        const to = join(dest, entry.name);
+        if (entry.isDirectory()) walk(from, to);
+        else {
+          copyFileSync(from, to);
+          created.push(to);
+        }
+      }
+    };
+    walk(TEMPLATE_SKILL_DIR, skillDest);
+    skillOutcome = 'installed';
+  }
+}
+
 writeFileSync(
   vaultManifest(vault),
   serialize({
@@ -201,6 +260,7 @@ writeFileSync(
     vault,
     installedAt: new Date().toISOString(),
     created,
+    createdDirs,
     modified,
     hookEntry,
     mcpServer: { name: 'warrant', server: mcpServer },
@@ -219,6 +279,11 @@ out(`    ${rel(policySource, cwd)}          your policy, in plain English — ed
 out(`    ${rel(pointer, cwd)}         points at the compiled policy`);
 out(`    ${rel(SETTINGS, cwd)}   PreToolUse hook added${settingsBefore ? paint(DIM, ' (merged — your other settings are untouched)') : ''}`);
 out(`    ${rel(MCP_CONFIG, cwd)}                 warrant exposed as an MCP tool${mcpBefore ? paint(DIM, ' (merged)') : ''}`);
+if (skillOutcome === 'installed') {
+  out(`    ${rel(projectSkillDir(cwd), cwd)}   the policy-authoring skill, at your request`);
+} else if (skillOutcome === 'exists') {
+  out(`    ${rel(projectSkillDir(cwd), cwd)}   ${paint(DIM, 'already existed — left untouched')}`);
+}
 out();
 out(`    ${paint(BOLD, 'the compiled policy is NOT in this project:')}`);
 out(`    ${compiled}`);

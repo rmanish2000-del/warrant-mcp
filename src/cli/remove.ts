@@ -37,6 +37,8 @@ const rel = (path: string) => {
 
 interface Manifest {
   readonly created: string[];
+  /** Directories init made (the optional skill) — absent in older manifests. */
+  readonly createdDirs?: string[];
   readonly modified: Array<{ path: string; backup: string }>;
   readonly hookEntry: HookEntry;
   readonly mcpServer: { name: string; server: Record<string, unknown> };
@@ -114,6 +116,20 @@ for (const path of manifest.created ?? []) {
   }
   rmSync(path, { force: true });
   cleaned.push(rel(path));
+}
+
+// 2b. Directories init made for the optional skill — deepest last in the
+//     manifest, so walk them in reverse, and only take one away when it is
+//     empty again. A file the user added is theirs, and so is the directory
+//     holding it.
+for (const dir of [...(manifest.createdDirs ?? [])].reverse()) {
+  if (!existsSync(dir)) continue;
+  if (readdirSync(dir).length === 0) {
+    rmSync(dir, { recursive: true, force: true });
+    cleaned.push(rel(dir));
+  } else {
+    leftAlone.push(`${rel(dir)} — kept, you added files to it`);
+  }
 }
 
 // 3. The vault, and then any empty directories init made.

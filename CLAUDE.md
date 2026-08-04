@@ -135,7 +135,7 @@ Two hard-won lessons, both found by attacking the thing in real sessions:
 
 ## Commands
 
-- `npm test` — full suite (currently **99 tests**). New test files must be
+- `npm test` — full suite (currently **102 tests**). New test files must be
   added to the script's explicit list; discovery is deliberate, not globbed.
 - `npm run typecheck` — `tsc --noEmit`, strict.
 - `npm run policy:review` / `policy:accept` / `policy:test -- "<action>"` —
