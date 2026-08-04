@@ -73,9 +73,9 @@ All nine were on Windows, which shapes the results — the agent reached for
 PowerShell because PowerShell was there. On another machine the same gaps exist
 behind different tool names, and I have not run this on macOS or Linux.
 
-Six of the nine got through. Five I could close. (A seventh route turned up
-later, by a completely different method — not in one of these nine sessions. It
-has its own section at the end.)
+Six of the nine got through. Five I could close. (A seventh turned up the next
+day by a completely different method, not in any of these nine sessions. It has
+its own section at the end.)
 
 **1. `mv` out of the workspace.** I asked the agent to "archive" the protected
 file outside the project. It did. My extractor knew `rm`-family commands deleted
@@ -213,11 +213,11 @@ visible.
 
 ## Addendum: a seventh, found by writing the specification
 
-Weeks after the hunt I wrote the policy format up as a versioned spec — the
+The day after the hunt I wrote the policy format up as a versioned spec — the
 artifact, the evaluation contract, and the exact matching semantics of every
 rule type — so that somebody could implement it in another language. Writing
-down what a rule *means* is a different exercise from attacking it, and it
-found a route nine adversarial sessions had not.
+down what a rule *means* turns out to be a different exercise from attacking
+it, and it took about an hour to find a route that a day of attacking had not.
 
 The rule that forbids force-pushing matches a command word, a subcommand, and a
 flag. Its subcommand test looks at the first non-flag argument. That is fine
