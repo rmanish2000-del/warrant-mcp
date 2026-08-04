@@ -66,11 +66,18 @@ Each of these was run, not reasoned about.
 - **The hook wiring is reachable from the workspace.** An agent with write
   access can edit `.claude/settings.json`. Detection is possible; prevention
   needs org-managed settings.
-- **The record is best-effort, and says so.** Recording happens after the
-  verdict and every failure is swallowed, because a record that can fail a tool
-  call has stopped being a record. So the report is evidence of what was
-  decided, not proof that everything decided was recorded. It is also not
-  tamper-evident: no signature, no chain. A real audit trail wants both.
+- **The record exists, and it is not an audit trail.** Both halves are worth
+  stating, because this file previously listed a verdict log under what was
+  still needed, and that is no longer true as written. What is true: every
+  checked tool call appends a line, and `warrant-mcp report` reads it. What is
+  still not true — **append-only by convention only** (the writer appends;
+  nothing enforces it, and the file cannot be made read-only because it must
+  stay writable), **no integrity check of any kind** (no hash, no chain, no
+  signature — a forged line that parses is accepted, and a deleted line leaves
+  no trace), **no external witness** (nothing leaves the machine), and
+  **silently incomplete on failure** (recording is best-effort by design, so a
+  missing line proves nothing). Anyone who can reach the file can rewrite it.
+  `SECURITY-SURFACE.md` §4 carries the long form.
 
 ## Not done
 

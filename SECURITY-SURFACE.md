@@ -143,10 +143,43 @@ These are properties of the architecture, not bugs waiting on a patch.
 **What a real deployment needs on top:** OS-level confinement (container,
 seccomp/AppArmor, a read-only mount for everything outside the workspace, a
 separate uid), an egress proxy enforcing the host allowlist at the network
-layer rather than at the tool layer, org-managed hook settings the agent
-cannot edit, and an append-only audit log of verdicts. The hook is a
-*policy* layer with a legible, human-authored refusal — it is not a sandbox,
-and it should sit inside one.
+layer rather than at the tool layer, and org-managed hook settings the agent
+cannot edit. The hook is a *policy* layer with a legible, human-authored
+refusal — it is not a sandbox, and it should sit inside one.
+
+This list used to end with "an append-only audit log of verdicts". Part of that
+now exists and the list is corrected rather than left standing, because a
+requirement listed as absent while it is present is the same defect in the other
+direction.
+
+**What exists (0.2.3+).** Every tool call the hook checks appends one line to
+`decisions.jsonl` beside the compiled policy — so, in the vaulted layout, outside
+the workspace, where clause W1 governs a hooked attempt to reach it exactly as
+it governs the policy. A second file records each compiled policy version once,
+so a change of enforcement is visible as a change of fingerprint rather than
+inferred. `warrant-mcp report` renders it locally.
+
+**What it is still not, and the gap is not small:**
+
+- **Append-only by convention, not in fact.** The only writer appends; nothing
+  enforces it. There is no append-only mode, no lock, and no permission bit
+  that would prevent an edit. The policy file beside it is `0o444`; the record
+  cannot be, because it must stay writable.
+- **No integrity check at all.** No hash, no chaining, no signature. The reader
+  validates that a line is well-formed, never that it is genuine, so a forged
+  line that parses is accepted. Deleting a line leaves no trace.
+- **No external witness.** Nothing leaves the machine. The record is exactly as
+  trustworthy as the machine and the person producing it.
+- **Silently incomplete on failure.** Recording runs after the verdict and
+  swallows every error, deliberately, so that an unwritable record can never
+  block a tool call. A missing line therefore proves nothing.
+- **It does not survive the attacks in §2 any better than the policy did.**
+  Route 8 deleted the policy with a glob; the same glob would take the record.
+  The vault helps for the same reason and to the same extent.
+
+An audit trail that survives an interested party still needs append-only
+storage, hash chaining or signing, and lines shipped off the machine as they are
+written. None of that is here.
 
 ## 5. Protecting the policy itself (M5)
 

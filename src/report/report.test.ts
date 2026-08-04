@@ -302,6 +302,11 @@ test('the sections answer the four questions, and the honest limits are on the p
   assert.match(html, /policy changed/, 'the policy edit must be visible on the time axis');
   assert.match(html, /never written/, 'the page must say the record was only read');
   assert.match(html, /not proof that every action was\s*checked/, 'the page must not overclaim coverage');
+  // The record is a plain file with no integrity check. A report that let a
+  // reader take it for an audit trail would be the overclaim that matters most,
+  // because the reader is the one person likely to act on it.
+  assert.match(html, /not tamper-evident/, 'the page must refuse the audit-trail reading');
+  assert.match(html, /append-only by convention\s*rather than in fact/, 'the page must say append-only is a convention, not a guarantee');
   assert.match(html, /aria-sort=/, 'columns must announce their sort state');
   assert.match(html, /@media print/, 'an auditor prints this');
   assert.match(html, /Never force-push\./, 'clause text must be present verbatim for expansion');
