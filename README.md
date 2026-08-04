@@ -7,6 +7,10 @@ An agent can already decide what to do. It cannot prove it was allowed to.
 Today that leaves two options: approve every tool call by hand, or trust the
 agent. warrant-mcp is the layer in between.
 
+**Here for the Claude Skill?** It lives in this repo:
+[Writing a policy with Claude](#writing-a-policy-with-claude) — two commands
+to install, no npm needed.
+
 ---
 
 ## Sixty seconds
