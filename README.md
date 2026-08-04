@@ -213,6 +213,23 @@ skill packages: naming things is the human's authority to exercise, and the
 skill's job is to ask for the names — and to explain, when a sentence cannot
 work, why the boundary is where it is.
 
+### Or install it as a plugin
+
+This repository is also a Claude Code plugin marketplace. Two commands, no
+npm install:
+
+```
+/plugin marketplace add rmanish2000-del/warrant-mcp
+/plugin install warrant-policy-author@warrant-mcp
+```
+
+You get exactly the skill above — the same folder this repo ships, no
+separate copy to drift. The plugin deliberately does **not** wire the MCP
+server or the enforcement hook: both need a per-project compiled policy that
+only `warrant-mcp init` can set up (vault, settings backup, exact undo), and
+a hook without a policy would deny everything. Write the policy with the
+skill; enforce it with `warrant-mcp init`.
+
 ## Where the policy is looked for
 
 1. `WARRANT_MCP_POLICY` — an absolute path. `init` writes this into both
