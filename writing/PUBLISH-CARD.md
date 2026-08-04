@@ -83,6 +83,9 @@ into a real link — off GitHub it is just a filename.
 
 ## The first hour
 
+Prepared answers for the predictable questions are in `RESPONSES.md`. Read it
+once before posting, not during.
+
 **Reply to:**
 
 - Anyone who names a bypass you have not seen. Thank them, ask for the exact

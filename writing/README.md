@@ -41,6 +41,7 @@ that points at another platform.
 | `variants-reddit.md` | r/ClaudeAI and r/LocalLLaMA — separate posts, no cross-post language |
 | `variants-devto.md` | frontmatter and tags for dev.to and Hashnode |
 | `PUBLISH-CARD.md` | the one page to follow on the day |
+| `RESPONSES.md` | prepared answers for the questions that will actually come |
 
 ## Before publishing anything
 
