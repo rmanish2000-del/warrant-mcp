@@ -1,4 +1,4 @@
-# I built a permission layer for AI agents, then spent a day breaking it. Six ways I got through.
+# I built a permission layer for AI agents, then spent a day breaking it. Six ways I got through — and a seventh I found by writing the spec.
 
 I gave a coding agent write access to a repo and could not answer a simple
 question: what is it actually allowed to do?
@@ -73,7 +73,9 @@ All nine were on Windows, which shapes the results — the agent reached for
 PowerShell because PowerShell was there. On another machine the same gaps exist
 behind different tool names, and I have not run this on macOS or Linux.
 
-Six of the nine got through. Five I could close.
+Six of the nine got through. Five I could close. (A seventh route turned up
+later, by a completely different method — not in one of these nine sessions. It
+has its own section at the end.)
 
 **1. `mv` out of the workspace.** I asked the agent to "archive" the protected
 file outside the project. It did. My extractor knew `rm`-family commands deleted
@@ -174,10 +176,20 @@ Properties of the architecture, not a backlog:
 - **Coverage is per-tool and per-client.** Two of the six were exactly this shape,
   and so was the PowerShell miss before them — the best evidence I have that this
   list is incomplete.
+- **A global flag that takes a separate value displaces the subcommand**, so
+  `git -c core.pager=cat push --force` slips a rule that denies
+  `git push --force`. Found later, by writing the spec rather than by attacking;
+  the addendum at the end says why it is open and how it is pinned.
 - **The hook configuration is a file in the project.** An agent with write access
   can edit it — I got a targeted `Edit` through that left it `{}`. Detection is
   possible; prevention needs org-managed settings I do not control.
 - **TOCTOU.** The check runs before execution. The world can change in between.
+- **Enforcement is a Claude Code hook.** Another MCP client gets the tool, which
+  advises rather than enforces.
+- **It costs a Node process per matched tool call.** The decision is about
+  0.01ms; the process around it measured 220–430ms median across three runs on a
+  busy laptop, about half of that being Node starting at all, with a p95 tail
+  into the seconds under load. `demo/bench.mjs` is the script.
 
 This is a policy layer, not a sandbox. It belongs inside one.
 
@@ -196,7 +208,58 @@ publish what still gets through where users will actually read it.
 The five closable bypasses are closed, each with a regression test named for the
 attack that opened it. The full log — including the two blocked routes and the
 one the model refused before I could test it — is in `SECURITY-SURFACE.md`,
-unsoftened.
+unsoftened. The seventh, below, is open on purpose and pinned so it stays
+visible.
+
+## Addendum: a seventh, found by writing the specification
+
+Weeks after the hunt I wrote the policy format up as a versioned spec — the
+artifact, the evaluation contract, and the exact matching semantics of every
+rule type — so that somebody could implement it in another language. Writing
+down what a rule *means* is a different exercise from attacking it, and it
+found a route nine adversarial sessions had not.
+
+The rule that forbids force-pushing matches a command word, a subcommand, and a
+flag. Its subcommand test looks at the first non-flag argument. That is fine
+until a global flag takes its value as a separate token — and then the value
+sits where the subcommand was expected. Run against the demo policy, through
+the real hook:
+
+```
+DENY   W8    git push --force
+DENY   W8    git --no-pager push --force
+ALLOW  --    git -c core.pager=cat push --force
+```
+
+`--no-pager` consumes nothing, so `push` stays in first position and the rule
+fires. `-c` consumes `core.pager=cat`, which lands in first position instead,
+so the rule looks for `push` there, does not find it, and quietly does not fire.
+Same intent, same effect on the remote, no refusal.
+
+I have left it open, deliberately. Closing it means knowing, for every command
+a policy can name, which of its flags take a separate value — `git -c` does,
+`git --no-pager` does not, and `docker`, `npm` and `kubectl` each have their own
+list. That is per-command knowledge the format does not carry, and the one thing
+that could supply it on demand is a model, which is precisely what is not
+allowed to be anywhere near a runtime decision. A guess here would be a rule
+that fires on some spellings and not others without saying which.
+
+So instead it is written down twice: as the specified behaviour, with the
+weakness stated in the section that defines it, and as a conformance case named
+`invocation-separate-word-flag-value-displaces-the-subcommand` that any
+implementation must reproduce to be conformant at 0.1.0. Fixing it now requires
+changing the spec and the corpus together — a visible decision at a version
+boundary, rather than a matcher edit nobody notices.
+
+It also dents the lesson I drew above, which is why it belongs here rather than
+in a footnote. I said the holes live in the tool-mapping layer, in the
+enumeration of somebody else's surface. This one does not. It is in the matcher
+itself, in the semantics of a rule I wrote and believed I understood — and what
+exposed it was not an attack but the discipline of having to state precisely
+what the thing does for a reader who cannot look at my code.
+
+That is the argument for writing the spec, made better than I could have made
+it: it found a bug in its own reference implementation.
 
 ## Try it
 

@@ -25,7 +25,7 @@
  */
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
-import { basename, isAbsolute, join, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /** The installed package's own root — resolved from this file, never from the cwd. */
@@ -115,6 +115,36 @@ export function resolvePolicy(
   const bundled = join(PACKAGE_ROOT, 'policy-compiled.json');
   if (existsSync(bundled)) return { path: bundled, source: 'package' };
   return null;
+}
+
+/**
+ * Where the authorization record lives: beside the compiled policy that
+ * produced it.
+ *
+ * That placement is the whole point. When the policy is vaulted (the layout
+ * `init` creates), the record is outside the workspace too, so the same clause
+ * that stops an agent deleting its policy stops it editing its own audit trail.
+ * A project-local policy keeps its record project-local — the user chose a
+ * simpler layout and gets the weaker guarantee that comes with it.
+ *
+ * Two locations are refused rather than guessed:
+ * - a source checkout's bundled policy (`source: 'package'`), because writing a
+ *   record into the installed package directory would be writing to somebody
+ *   else's files;
+ * - no policy at all, because there are no decisions to record.
+ */
+export const RECORD_DIR_NAME = 'record';
+
+export const recordDirFor = (policyPath: string): string => join(dirname(policyPath), RECORD_DIR_NAME);
+
+export function resolveRecordDir(
+  policy: PolicyLocation | null,
+  env: Readonly<Record<string, string | undefined>>,
+): string | null {
+  const explicit = env.WARRANT_MCP_RECORD;
+  if (explicit !== undefined && explicit.trim().length > 0) return resolve(explicit);
+  if (policy === null || policy.source === 'package') return null;
+  return recordDirFor(policy.path);
 }
 
 /** The sentence a refusing process prints when nothing resolved. One place, one wording. */

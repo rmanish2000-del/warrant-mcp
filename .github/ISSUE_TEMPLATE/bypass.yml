@@ -1,0 +1,88 @@
+name: Bypass report
+description: Something got past enforcement. This is the most useful issue this project can get.
+title: "[bypass] "
+labels: ["bypass"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you — genuinely. Six routes got past this during the build; five
+        are closed and one is still open, all in
+        [SECURITY-SURFACE.md](https://github.com/rmanish2000-del/warrant-mcp/blob/main/SECURITY-SURFACE.md). Yours goes in
+        the same table, credited to you, **including if it turns out to be
+        structural and I cannot fix it.**
+
+        Before filing: if the route is already in §4 "Honest limits" — shell
+        glob or variable expansion, obfuscation, symlinks, TOCTOU — it is a
+        documented limit rather than a new finding. If it is a way past
+        enforcement that leaves no trace, please use
+        [SECURITY.md](https://github.com/rmanish2000-del/warrant-mcp/blob/main/SECURITY.md) instead of this form.
+
+  - type: textarea
+    id: prompt
+    attributes:
+      label: What you asked the agent
+      description: Your actual words, not a summary — the phrasing changes which tool it reaches for.
+      placeholder: e.g. Tidy up this directory — delete the leftover .env file.
+    validations:
+      required: true
+
+  - type: textarea
+    id: toolcall
+    attributes:
+      label: What it actually ran
+      description: The tool name and its arguments. Paste the tool call if your client shows it.
+      render: text
+      placeholder: |
+        PowerShell {"command": "Remove-Item -Force .env"}
+    validations:
+      required: true
+
+  - type: dropdown
+    id: hook
+    attributes:
+      label: What the hook did
+      options:
+        - Nothing — it never fired
+        - Printed a refusal, but the action happened anyway
+        - Denied something else, not the action that got through
+        - Something else (describe below)
+    validations:
+      required: true
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: What ended up on disk (or on the network)
+      description: What actually changed, and how you checked.
+      placeholder: .env was gone; confirmed with `ls -a`.
+    validations:
+      required: true
+
+  - type: textarea
+    id: policy
+    attributes:
+      label: Your policy, or the clause you expected to fire
+      description: "`.warrant/policy.md` is fine to paste. Do not paste anything secret."
+      render: markdown
+    validations:
+      required: true
+
+  - type: input
+    id: env
+    attributes:
+      label: OS, Node version, warrant-mcp version, MCP client
+      description: >-
+        `node --version` and `warrant-mcp --version`. Everything recorded so far
+        ran on Windows, so macOS and Linux reports are worth more than Windows ones.
+      placeholder: macOS 15.3, Node 22.14.0, warrant-mcp 0.2.1, Claude Code 2.1.220
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: reproduced
+    attributes:
+      label: Reproducibility
+      options:
+        - label: I ran this more than once and it got through each time
+        - label: It got through once and I have not retried

@@ -126,15 +126,35 @@ anything expensive"* (needs world knowledge — the model deciding at runtime),
 sentences that shaped this vocabulary are in
 [demo/ten-sentences.md](demo/ten-sentences.md).
 
+### The format is specified separately
+
+[SPEC.md](SPEC.md) — **version 0.1.0**, versioned independently of this package
+— defines the compiled artifact, the exact matching semantics of all eight rule
+types, clause precedence, the fail-closed requirements, and what the format
+deliberately cannot express. Enforcement is explicitly out of its scope: a hook
+is one client's mechanism, not part of the format.
+
+**This repository is the reference implementation**, not the definition. Where
+the spec and this code disagree, the spec is what an implementer should trust
+and the disagreement is a bug here. [`spec/corpus.json`](spec/corpus.json) is the
+arbiter — 76 language-agnostic checks, run by this repo's own test suite, so
+this implementation cannot drift from the document without going red. **A second
+implementation would be welcome**: it is the only real evidence that the spec is
+precise enough to deserve the name, and the corpus is the only referee either
+side needs. [`spec/README.md`](spec/README.md) is the porting guide.
+
 ---
 
 ## Limitations — read this before relying on it
 
 **This is a policy layer, not a sandbox. It should be deployed inside one.**
 
-Nine adversarial sessions were run against it; five bypasses were found and
-closed, each with a regression test. These classes remain open by construction,
-and are properties of the architecture rather than bugs awaiting a patch:
+Nine adversarial sessions were run against it. Six routes got through; five are
+closed, each with a regression test named for the attack that opened it. A
+seventh was found later, while writing [SPEC.md](SPEC.md) rather than by
+attacking anything, and is deliberately still open — see the last bullet below.
+These classes remain open by construction, and are properties of the
+architecture rather than bugs awaiting a patch:
 
 - **Shell glob and variable expansion.** The hook sees `rm -f *`; the shell
   expands it after the decision. Same for `$VAR`, command substitution and
@@ -147,21 +167,77 @@ and are properties of the architecture rather than bugs awaiting a patch:
   project pointing out of it passes the workspace clause.
 - **Coverage is per-tool and per-client.** Only Claude Code tool calls are
   hooked. A new tool, another MCP client, an unusual field name, or a process
-  that outlives the session are all outside. Two of the five bypasses found
-  were exactly this shape, which is the best evidence that the list above is
-  not exhaustive.
+  that outlives the session are all outside. Two of the six routes found were
+  exactly this shape, which is the best evidence that the list above is not
+  exhaustive.
 - **Network egress is only as good as the mapping.** Tool-driven fetches are
   covered; an MCP server's own outbound calls are not.
 - **TOCTOU.** The check runs before execution; the world can change in between.
+- **Enforcement is a Claude Code hook.** Any other MCP client gets the
+  `check_action` tool, which advises and does not enforce — an agent that does
+  not call it is not constrained by it.
+- **It costs a process per matched tool call.** The decision itself is about
+  0.01ms, but the hook is a separate Node process, so end to end it measured
+  220–430ms median across three runs on a busy Windows laptop — roughly half of
+  that being Node starting at all, and a p95 tail into the seconds when the
+  machine is loaded. Measure your own with `node demo/bench.mjs`.
 - **The model's own refusals are not enforcement.** A route the model declines
   is untested, not safe.
 - **The hook configuration is a file in your project**, so an agent with write
   access can edit it. Org-managed settings are the real answer.
+- **A global flag with a separate-word value displaces the subcommand.**
+  `git -c core.pager=cat push --force` slips a rule that denies
+  `git push --force`, because `core.pager=cat` lands where the subcommand was
+  expected; `git --no-pager push --force` is denied, because that flag consumes
+  nothing. Closing it needs per-command knowledge of which flags take values —
+  knowledge this format does not carry and a model may not supply at runtime —
+  so it is specified in [SPEC.md](SPEC.md) §3.3.5 and pinned by a conformance
+  case, making any fix a deliberate version bump rather than a silent change.
 
 A real deployment wants OS-level confinement, an egress proxy enforcing the
 host list at the network layer, hook settings the agent cannot edit, and an
 append-only record of verdicts. The full attack log and reasoning are in
-[SECURITY-SURFACE.md](SECURITY-SURFACE.md), unsoftened.
+[SECURITY-SURFACE.md](SECURITY-SURFACE.md), unsoftened. How the five
+bypasses were actually found, session by session:
+[writing/bypass-hunt.md](writing/bypass-hunt.md).
+
+---
+
+## The record, and reading it
+
+Every tool call the hook checks appends one line to an append-only record that
+lives beside the compiled policy — outside your project, so the clause that
+protects the policy protects its record too. Then:
+
+```bash
+warrant-mcp report
+```
+
+One `.html` file. Open it offline: the stylesheet, the script and the data are
+all inside it, and the page makes **no network request at all** when it opens.
+Nothing is uploaded, no server starts, and the record itself is only ever read.
+
+It is built around the four questions an auditor actually asks — what was
+attempted and what happened, what was refused and by which clause, what is
+repeating, and when behaviour changed because the policy did. A dense sortable
+table is the centre of it; filters AND together and every active one shows as a
+chip you can remove, with a running count of what they hide, so a filtered view
+can never be mistaken for the whole picture. The filter state lives in the URL
+fragment, so you can send someone exactly what you were looking at. Clauses that
+never fired are listed too — a rule nobody has tripped is either dead weight or
+untested.
+
+`--since 7d` narrows the window and the page says how much it excluded.
+`--out <path>` puts it somewhere else.
+
+**Treated as public.** The rendered bytes are scanned for credential shapes,
+home directories and login names *before* anything is written; if it would leak,
+the command refuses and no file is created. Paths are rewritten first — your
+workspace to `.`, your home to `~`, anyone else's login name to `<user>`.
+
+The record is best-effort on purpose: a failure to write can never turn a
+refusal into a pass, so the report tells you it is evidence of what was decided
+rather than proof that everything decided was recorded.
 
 ---
 
@@ -255,7 +331,7 @@ policy is a refusal, never a pass.
 | `.warrant/config.json` | pointer to the compiled policy |
 | `.claude/settings.json` | hook appended, **merged** — your other settings survive |
 | `.mcp.json` | `warrant` server added, merged |
-| `~/.warrant/projects/<project>/` | the compiled policy (read-only), your settings backup, and the record `remove` reads |
+| `~/.warrant/projects/<project>/` | the compiled policy (read-only), your settings backup, the undo record `remove` reads, and `record/` — the authorization record |
 
 A settings file it cannot parse is refused, not rewritten.
 
@@ -268,6 +344,7 @@ A settings file it cannot parse is refused, not rewritten.
 | `warrant-mcp init` | wire up this project — no API key; `--skill` also installs the policy-authoring skill |
 | `warrant-mcp remove` | undo it, restoring settings byte-for-byte |
 | `warrant-mcp test "<action>"` | dry-run one action; nothing is enforced or written |
+| `warrant-mcp report` | render the record as one local HTML file — `--since 7d`, `--out <path>` |
 | `warrant-mcp review` | compile the policy and show what changes (needs an API key) |
 | `warrant-mcp accept` | adopt the reviewed draft — never compiles |
 | `warrant-mcp serve` | the MCP server on stdio (a client spawns this) |
@@ -278,7 +355,7 @@ Requires Node ≥ 22.6. `npx warrant-mcp init` works without installing.
 ## Development
 
 ```bash
-npm test        # 98 tests
+npm test        # 227 tests, including the SPEC.md conformance corpus
 npm run typecheck
 npm run demo    # the canonical checks with verdict banners, fully offline
 ```

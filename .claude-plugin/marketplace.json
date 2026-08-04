@@ -4,14 +4,16 @@
     "name": "Manish Patel",
     "url": "https://github.com/rmanish2000-del"
   },
-  "description": "Policy firewall for AI agent tool calls — plain-English rules compiled once, enforced by deterministic code.",
+  "description": "Policy firewall for AI agent tool calls \u2014 plain-English rules compiled once, enforced by deterministic code.",
   "plugins": [
     {
       "name": "warrant-policy-author",
       "source": "./",
       "strict": false,
-      "skills": ["./skills/warrant-policy-author"],
-      "description": "Writes warrant-mcp policies in plain English that compile on the first attempt: a short interview, sentences shaped for the closed rule set, and the failure shapes explained rather than avoided. The skill writes policy text only — enforcement is warrant-mcp's PreToolUse hook and deterministic engine, wired per-project by `warrant-mcp init`, never by this plugin.",
+      "skills": [
+        "./skills/warrant-policy-author"
+      ],
+      "description": "Writes warrant-mcp policies in plain English, shaped for the closed rule set so review has the best chance of accepting them first time: a short interview, sentences shaped for the closed rule set, and the failure shapes explained rather than avoided. The skill writes policy text only \u2014 enforcement is warrant-mcp's PreToolUse hook and deterministic engine, wired per-project by `warrant-mcp init`, never by this plugin.",
       "author": {
         "name": "Manish Patel",
         "url": "https://github.com/rmanish2000-del"
@@ -20,7 +22,13 @@
       "repository": "https://github.com/rmanish2000-del/warrant-mcp",
       "license": "MIT",
       "category": "security",
-      "keywords": ["policy", "guardrails", "agent-firewall", "claude-code", "ai-safety"]
+      "keywords": [
+        "policy",
+        "guardrails",
+        "agent-firewall",
+        "claude-code",
+        "ai-safety"
+      ]
     }
   ]
 }

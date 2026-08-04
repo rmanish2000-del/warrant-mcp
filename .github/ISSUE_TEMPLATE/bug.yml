@@ -1,0 +1,48 @@
+name: Bug report
+description: Something is broken that is not a bypass and not a policy sentence.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Two things have their own forms, because they need different
+        information: a **bypass** (something got past enforcement) and a
+        **policy sentence that would not compile**. Everything else is here.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Include the command you ran and its full output.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+
+  - type: input
+    id: env
+    attributes:
+      label: OS, Node version, warrant-mcp version
+      description: "`node --version` and `warrant-mcp --version`. Node 22.6 or newer is required."
+      placeholder: Ubuntu 24.04, Node 22.14.0, warrant-mcp 0.2.1
+    validations:
+      required: true
+
+  - type: textarea
+    id: check
+    attributes:
+      label: Output of `warrant-mcp test "delete .env"`
+      description: >-
+        Run it in the affected directory. It touches nothing, and it tells me
+        whether the policy resolved at all — which is the first thing I would
+        check anyway.
+      render: text
+    validations:
+      required: false

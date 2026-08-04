@@ -1,0 +1,60 @@
+name: A policy sentence that would not compile
+description: You wrote a rule in plain English and the compiler refused it. This is a feature request, not a bug.
+title: "[policy] "
+labels: ["policy-vocabulary"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The compiler refuses a **whole policy** rather than approximate a
+        sentence it cannot express, because a sentence that silently compiled to
+        nothing would read as protection you do not have. So a refusal is
+        working as intended — but it is also one of two things worth hearing
+        about:
+
+        - a **gap in the rule vocabulary**, which is a feature request; or
+        - a sentence that genuinely cannot be decided from the action alone,
+          in which case the refusal is right and the guidance should say so
+          better.
+
+        `demo/ten-sentences.md` records that reasoning, including the ones
+        deliberately left unexpressible — provenance ("don't delete anything you
+        didn't create"), cost ("don't do anything expensive"), approval ("ask me
+        first") and cross-call limits ("don't change more than ten files").
+
+  - type: textarea
+    id: sentence
+    attributes:
+      label: The sentence you wrote
+      description: Exactly as it appears in your policy.
+      placeholder: Never touch anything in the vendor directory.
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: What `warrant-mcp review` printed
+      description: The refusal, including the "What the rule set can express nearby" part.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: intent
+    attributes:
+      label: What you wanted it to stop
+      description: >-
+        Describe the action you had in mind — the command or the file operation.
+        This is the part that decides whether it is expressible, so be concrete.
+      placeholder: Any write or delete under vendor/, from any tool.
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Did the suggested rewrite work?
+      description: The refusal offers a concrete rewrite. If you tried it, say what happened.
+    validations:
+      required: false

@@ -243,9 +243,48 @@ export function mapToolCall(toolName: string, toolInput: unknown): MappedCheck[]
 }
 
 /**
+ * What the tool call amounts to, for a caller that needs more than the veto.
+ *
+ * `denied` is the enforcement answer and nothing else reads it. `governing` is
+ * the check worth recording: the one that denied, or — when nothing denied —
+ * the first mapped check, which for a shell tool is the whole command line and
+ * for a file tool is the path. One line per tool call, not one per extracted
+ * candidate, because an auditor is reading tool calls.
+ *
+ * `governing` is null for a tool that maps to nothing at all, and such a call
+ * is deliberately not recorded: a record padded with every Read and Grep would
+ * bury the decisions somebody needs to find.
+ */
+export interface ToolAssessment {
+  readonly governing: { readonly check: MappedCheck; readonly outcome: CheckOutcome } | null;
+  readonly denied: CheckOutcome | null;
+}
+
+export function assessToolCall(
+  policy: CompiledPolicy,
+  ctx: EvaluationContext,
+  toolName: string,
+  toolInput: unknown,
+): ToolAssessment {
+  let first: { check: MappedCheck; outcome: CheckOutcome } | null = null;
+  for (const check of mapToolCall(toolName, toolInput)) {
+    const outcome = handleCheckAction(policy, ctx, check.action);
+    if (first === null) first = { check, outcome };
+    if (outcome.verdict.decision === 'DENY') {
+      const cited = { ...outcome, requested: check.display };
+      return { governing: { check, outcome: cited }, denied: cited };
+    }
+  }
+  return { governing: first, denied: null };
+}
+
+/**
  * Evaluate every mapped check; the first DENY decides the tool call. Returns
  * null when nothing is denied — the hook then expresses NO opinion (it never
  * auto-approves; Claude Code's own permission flow still applies).
+ *
+ * A thin projection of `assessToolCall`, so there is exactly one place where a
+ * tool call becomes a verdict and no second path that could drift from it.
  */
 export function decideToolCall(
   policy: CompiledPolicy,
@@ -253,13 +292,7 @@ export function decideToolCall(
   toolName: string,
   toolInput: unknown,
 ): CheckOutcome | null {
-  for (const check of mapToolCall(toolName, toolInput)) {
-    const outcome = handleCheckAction(policy, ctx, check.action);
-    if (outcome.verdict.decision === 'DENY') {
-      return { ...outcome, requested: check.display };
-    }
-  }
-  return null;
+  return assessToolCall(policy, ctx, toolName, toolInput).denied;
 }
 
 /** The exact PreToolUse deny shape from the hooks reference (code.claude.com/docs/en/hooks). */

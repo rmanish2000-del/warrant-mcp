@@ -14,7 +14,8 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import { readPolicyCache } from '../compiler/cache.ts';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { PACKAGE_ROOT, noPolicyMessage, resolvePolicy } from '../config/paths.ts';
+import { PACKAGE_ROOT, noPolicyMessage, resolvePolicy, resolveRecordDir } from '../config/paths.ts';
+import { observeDecision } from '../record/observe.ts';
 import { handleCheckAction } from './handler.ts';
 import { renderOutcome, toolResultText } from './present.ts';
 import type { EvaluationContext } from '../engine/types.ts';
@@ -47,6 +48,9 @@ const ctx: EvaluationContext = {
   workspaceRoot: process.env.WARRANT_MCP_WORKSPACE ?? process.cwd(),
   caseInsensitivePaths: process.platform === 'win32',
 };
+
+/** Beside the policy — outside the workspace whenever the policy is vaulted. */
+const recordDir = resolveRecordDir(located, process.env);
 
 const CHECK_ACTION_INPUT_SCHEMA = {
   type: 'object',
@@ -96,6 +100,17 @@ server.setRequestHandler(CallToolRequestSchema, (request) => {
   }
   const outcome = handleCheckAction(policy, ctx, request.params.arguments ?? {});
   log(renderOutcome(outcome, process.stderr.isTTY ?? false));
+  // The advisory path is recorded too, marked as such: a report that showed
+  // only hook decisions would understate what the agent asked about.
+  observeDecision({
+    recordDir,
+    policy,
+    source: 'tool',
+    tool: 'check_action',
+    action: request.params.arguments ?? {},
+    verdict: outcome.verdict,
+    at: new Date(),
+  });
   return { content: [{ type: 'text', text: toolResultText(outcome) }] };
 });
 

@@ -1,8 +1,10 @@
 ---
 name: warrant-policy-author
 description: >
-  Write a warrant-mcp policy in plain English that compiles on the first
-  attempt. Use when the user wants to create or edit .warrant/policy.md,
+  Write a warrant-mcp policy in plain English, shaped for the closed rule set
+  so review has the best chance of accepting it first time — only
+  `warrant-mcp review` can say whether it compiles. Use when the user wants to
+  create or edit .warrant/policy.md,
   write rules for what an AI agent may do in a project, or asks what
   warrant-mcp can and cannot enforce. Interviews the user, drafts numbered
   policy sentences that map cleanly onto the closed rule set, screens for the
@@ -79,10 +81,17 @@ inventing anything:
 - **File-ending protection is a plain ends-with.** Write ".pem or .key",
   never "*.pem" or a pattern.
 - **The one positive form is a write scope**: "Only write inside src and
-  tests." Use it only when the user names the writable area positively, with
-  workspace-relative directories — never absolute paths. Warn the user it is
-  the broadest rule: everything outside those roots, including files at the
-  project root, becomes off-limits to writes.
+  tests." Use it when the user states an exclusive working area — "it should
+  only ever touch drafts" — with workspace-relative directories, never
+  absolute paths. Permission is not exclusivity: "writing code in app/ is
+  fine" grants access to app/, it does not say everything else is
+  off-limits, and compiling it to a scope narrows the user's authority
+  beyond their words — protect the places they fear by name instead, or ask.
+  When you do write a scope, state the consequence concretely before the
+  user compiles, with named files: a policy scoped to src and tests refuses
+  editing README.md, package.json, and .gitignore — every path outside the
+  roots, including files neither of you has thought about yet. A user who
+  meets that refusal unwarned blames the tool.
 - **Never name the workspace location.** "Stay inside the project" is
   complete; the system stamps the actual directory at runtime.
 - **Rules are prohibitions; silence is permission.** Anything no sentence

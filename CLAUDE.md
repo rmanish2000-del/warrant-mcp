@@ -54,6 +54,15 @@ What was reused: the thinking. What was deliberately diverged:
   `adapter.ts` that maps Claude Code tool calls onto action kinds.
 - **`src/server/`** — MCP stdio server (`main.ts`), pure `handler.ts`,
   presentation in `present.ts`.
+- **`src/record/`** — the append-only authorization record. `types.ts` is pure
+  (parsing, the policy fingerprint); `store.ts` is the only writer; `observe.ts`
+  is what the two boundaries call. Never imported by the engine, handler, hook
+  adapter or presentation — see invariant 6.
+- **`src/report/`** — `warrant-mcp report`, pure: `model.ts` aggregates,
+  `redact.ts` is screen safety both ways (rewrite what is private, scan for
+  what is secret), `client.ts` holds the page's CSS and script as strings,
+  `html.ts` renders. No clock, no filesystem; `src/cli/report.ts` is the
+  boundary.
 - **`src/authoring/`** — review-time only: rules→English, behaviour-diff
   corpus, unmapped guidance, CLI phrase parsing. **Never imported by the
   engine, handler or hook.**
@@ -80,10 +89,16 @@ Violating any of these breaks the product claim, not just a test.
    re-validated on every load.
 5. **Fail closed everywhere.** Malformed action, unreadable hook input,
    invalid cache, unknown rule → DENY.
-6. **A DENY performs no side effect.** The deciding modules import no
-   filesystem, process-spawning or network capability — `guard.test.ts`
-   enforces this by scanning their source. Do not add such an import; do not
-   weaken the scanner when its own prose trips it (reword the comment).
+6. **A DENY performs no side effect on the world the action aimed at.** The
+   deciding modules import no filesystem, process-spawning or network
+   capability — `guard.test.ts` enforces this by scanning their source. Do not
+   add such an import; do not weaken the scanner when its own prose trips it
+   (reword the comment). The authorization record is the one thing written
+   after a verdict, and it is written by the **boundary** (`pretooluse.ts`,
+   `server/main.ts`), never by the deciding path: `src/record/` is not in
+   `DECIDING_MODULES` and nothing in the deciding path imports it. Recording
+   cannot throw and its result is never read, so an unwritable record can
+   never turn an ALLOW into a block or a DENY into a pass.
 7. **The hook vetoes, never approves.** On ALLOW it exits silently so Claude
    Code's own permission flow still applies.
 8. **Nothing compiles on a demo path.** `policy:review` is the one place a
@@ -95,6 +110,31 @@ Violating any of these breaks the product claim, not just a test.
 11. **The compiled policy never lives inside the project it governs.** `init`
     vaults it under `~/.warrant/projects/<project>/`, read-only. Putting it
     back in the workspace would undo M5 and reopen M4 attack 8.
+
+## The format is a spec, versioned separately from the package
+
+[SPEC.md](SPEC.md) is at **0.1.0** and is versioned independently of
+`package.json`. Rules that hold:
+
+- **Enforcement is out of scope, permanently.** The spec covers the source
+  policy, the artifact and the evaluation contract. Hooks are one client's
+  mechanism; putting them in the spec would bind the format to one host's
+  lifecycle. Do not "helpfully" add an enforcement section.
+- **`spec/corpus.json` is the arbiter**, not this codebase. It is data on
+  purpose so another language can run it. `src/spec/conformance.test.ts` runs
+  it here, and fails if a schema rule type has no case.
+- **Where SPEC.md and `src/` disagree, SPEC.md is right** and `src/` has the
+  bug. Say so in an issue rather than quietly editing the spec to match.
+- **`skill-drift.test.ts` now pins schema.ts ↔ SPEC.md both directions**, plus
+  field names, the rule-type count in prose (skill reference, README, SPEC.md)
+  and the corpus/spec version agreement.
+- **Writing the spec found a real hole and it was left unfixed on purpose:**
+  `shell_forbidden_invocation` matches `subcommands` against the first non-flag
+  argument, so `git -c core.pager=cat push --force` slips a rule that denies
+  `git push --force`. SPEC.md §3.3.5, SECURITY-SURFACE.md §4.9, and conformance
+  case `invocation-separate-word-flag-value-displaces-the-subcommand`. Fixing it
+  needs per-command knowledge of which flags take values — a 0.2.0 decision, not
+  a patch.
 
 ## What is deliberately NOT claimed
 
@@ -135,7 +175,15 @@ Two hard-won lessons, both found by attacking the thing in real sessions:
 
 ## Commands
 
-- `npm test` — full suite (currently **102 tests**). New test files must be
+- `warrant-mcp report [--since 7d] [--out <path>]` — render the record as one
+  self-contained HTML file. **Local only**: no server, no upload, nothing
+  fetched when the page opens. The rendered bytes are scanned for credentials
+  and machine identity *before* anything is written; a report that would leak
+  is never a file on disk. Deterministic apart from the generated-at stamp.
+  The visual identity is the **Prava family** carried over from the `warrant`
+  console (warm paper, teal accent, Inter + IBM Plex Mono) — named locally,
+  never loaded from a font CDN, because self-contained wins over exact type.
+- `npm test` — full suite (currently **227 tests**). New test files must be
   added to the script's explicit list; discovery is deliberate, not globbed.
 - `npm run typecheck` — `tsc --noEmit`, strict.
 - `npm run policy:review` / `policy:accept` / `policy:test -- "<action>"` —
@@ -148,6 +196,13 @@ Two hard-won lessons, both found by attacking the thing in real sessions:
 
 ## Conventions
 
+- **No `.mcp.json` or `hooks/` at the repository root.** The marketplace entry
+  sets `source: "./"`, so the repo root is the plugin root, and Claude Code
+  auto-loads both from there — an `.mcp.json` here silently wires an MCP server
+  into every plugin install, contradicting the README and pointing at a policy
+  the installing project does not have. `skill-drift.test.ts` fails if either
+  returns. To develop against the server in this repo, register it yourself
+  with `claude mcp add` instead.
 - **Never `git add -A`.** Name every path.
 - **Never read, print or echo `.env`.** Secrets stay in the environment.
 - **The npm token lives in the user-level `~/.npmrc` and nowhere else.** It is
@@ -164,7 +219,35 @@ Two hard-won lessons, both found by attacking the thing in real sessions:
   pair is copied to `templates/` for `warrant-mcp init`; `paths.test.ts` pins that they
   match, because the root copy is not shipped and the template is.
 - Published as **`warrant-mcp`** on npm (MIT). `warrant` was taken.
-- Remote: `github.com/rmanish2000-del/warrant-mcp` — **private**. It becomes public only
-  by an explicit decision at submission, never as a side effect of a push. A full-history
-  scan across all commits found no secrets before the first push; re-run it before any
-  change of visibility.
+- Remote: `github.com/rmanish2000-del/warrant-mcp` — **public** (made public by
+  founder decision at submission time; a full-history secret scan was clean before
+  the first push). Everything committed here is visible to strangers the moment it
+  is pushed — write commits and files accordingly.
+
+## Parallel sessions: one directory, one branch, one owner
+
+Two Claude sessions sharing this directory has already cost work twice in one
+day — a `git checkout --` clobbered another session's uncommitted edits, and
+commit `fb62a5e` swept another session's in-flight files into a commit with an
+unrelated message. Git worktrees are the mechanism that prevents it; these are
+the rules a session follows.
+
+- **This directory (`warrant-mcp/`) is the main worktree and owns `main`.**
+- **The publishing workstream owns `../warrant-mcp-publishing`**, a linked
+  worktree on the `publishing` branch. Post, variants, publish-card work
+  happens there, never here.
+- Need a parallel workstream? Make a worktree, not a second opinion about
+  sharing: `git worktree add ../warrant-mcp-<purpose> -b <purpose>`, then
+  `npm install` inside it (node_modules is per-worktree). Merge to `main`
+  fast-forward when done, then `git worktree remove` the directory.
+- Git refuses to check out a branch another worktree already holds. That
+  refusal is the guardrail — never defeat it with `--force`.
+- In a tree you own: stage named paths only (already a rule above), and check
+  `git branch --show-current` before committing — a branch can have moved
+  under an earlier session's assumption, and S7's tree turned out to be on
+  `publishing` when a session believed it was on `main`.
+- **In a tree you do not own: touch nothing.** No `git switch`, no
+  `git checkout --`, no `git reset`, no `git stash`, no commits. Uncommitted
+  changes you did not make are another session's in-flight work — leave them
+  alone and say what you saw.
+- `git worktree list` names every directory and the branch it holds.
