@@ -161,7 +161,9 @@ and are properties of the architecture rather than bugs awaiting a patch:
 A real deployment wants OS-level confinement, an egress proxy enforcing the
 host list at the network layer, hook settings the agent cannot edit, and an
 append-only record of verdicts. The full attack log and reasoning are in
-[SECURITY-SURFACE.md](SECURITY-SURFACE.md), unsoftened.
+[SECURITY-SURFACE.md](SECURITY-SURFACE.md), unsoftened. How the five
+bypasses were actually found, session by session:
+[writing/bypass-hunt.md](writing/bypass-hunt.md).
 
 ---
 
