@@ -135,7 +135,7 @@ Two hard-won lessons, both found by attacking the thing in real sessions:
 
 ## Commands
 
-- `npm test` — full suite (currently **98 tests**). New test files must be
+- `npm test` — full suite (currently **99 tests**). New test files must be
   added to the script's explicit list; discovery is deliberate, not globbed.
 - `npm run typecheck` — `tsc --noEmit`, strict.
 - `npm run policy:review` / `policy:accept` / `policy:test -- "<action>"` —
@@ -150,6 +150,12 @@ Two hard-won lessons, both found by attacking the thing in real sessions:
 
 - **Never `git add -A`.** Name every path.
 - **Never read, print or echo `.env`.** Secrets stay in the environment.
+- **The npm token lives in the user-level `~/.npmrc` and nowhere else.** It is
+  never committed, never pasted into a chat, never echoed, and never read back —
+  not even partially. To publish, the human sets it once in their own terminal
+  with `npm config set //registry.npmjs.org/:_authToken=<token>`; verification is
+  `npm whoami`, which prints a username and not a secret. A repo-level `.npmrc`
+  is gitignored precisely so a token cannot arrive there by accident.
 - `attack-fixtures/` holds an adversarial file-deleting MCP server used to
   test hook coverage. It is gitignored and must never ship as product code.
 - `policy-compiled.pending.json` is a transient review draft; the server and

@@ -40,3 +40,6 @@ policy-compiled.pending.json
 # Compiled output for the npm package. Built by prepack; never committed.
 dist/
 *.tgz
+
+# npm auth. The token lives in the USER-level ~/.npmrc only — never here.
+.npmrc
