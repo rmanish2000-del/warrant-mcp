@@ -19,27 +19,55 @@ cd your-project
 warrant-mcp init
 ```
 
-`init` writes `.warrant/` — a starter policy in plain English and its compiled
-clauses — and prints the MCP and hook configuration to paste. It copies; it
-never compiles, so a fresh install enforces immediately with no API key.
+That is the whole setup. `init` copies a starter policy, wires the PreToolUse
+hook into `.claude/settings.json` and the server into `.mcp.json`, and returns
+**enforcing** — it never compiles, so no API key is involved. Measured from an
+empty directory to a first refusal, offline: **59 seconds**, of which 47 is
+`npm install`.
 
-Then see what it would refuse, without enforcing anything:
+Then, one command that refuses:
 
 ```bash
 warrant-mcp test "delete .env"
-warrant-mcp test "shell rm -rf build"
-warrant-mcp test "http GET https://example.com"
 ```
 
+`init` **merges** — every key already in your settings file survives, and a
+file it cannot parse is refused rather than rewritten. It records the original
+bytes, so:
+
+```bash
+warrant-mcp remove
+```
+
+restores your settings file byte-for-byte and deletes what init created.
+
 `npx warrant-mcp init` works too. Requires Node ≥ 22.6.
+
+### What init touches
+
+| Path | |
+|---|---|
+| `.warrant/policy.md` | your policy in plain English — edit this |
+| `.warrant/config.json` | a pointer to the compiled policy |
+| `.claude/settings.json` | PreToolUse hook appended (merged) |
+| `.mcp.json` | `warrant` server added (merged) |
+| `~/.warrant/projects/<project>/` | **the compiled policy, read-only, outside your project** |
+
+That last row is the one that matters. The compiled policy is the thing that
+does the refusing, so it does not live where the agent works — an agent that
+can delete its own policy can disarm what stops it. The same directory holds
+the backup of your settings file and the record `remove` reads.
 
 **Where an installed instance looks for your policy**, in order:
 
 1. `WARRANT_MCP_POLICY` — an absolute path. `init` writes this into both
    generated configs, so a client that spawns the server from an arbitrary
    directory still finds the right policy.
-2. `<cwd>/.warrant/policy-compiled.json` — the project convention.
-3. `<package>/policy-compiled.json` — present only in a source checkout of this
+2. `<cwd>/.warrant/config.json` — the pointer `init` writes, naming the vault
+   outside the project.
+3. `<cwd>/.warrant/policy-compiled.json` — a simple in-project layout, for
+   anyone who prefers it.
+4. `<package>/policy-compiled.json` — present only in a source checkout of this
    repository. It is deliberately **not** shipped in the tarball, so an
    installed copy can never silently enforce the sample policy; the sample
    ships under `templates/` and only `init` copies it.

@@ -23,8 +23,9 @@
  * If none resolve, the caller refuses. A missing policy is a loud refusal, never
  * a pass — the same rule the engine has had since M1.
  */
-import { existsSync } from 'node:fs';
-import { isAbsolute, join, resolve } from 'node:path';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
+import { basename, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /** The installed package's own root — resolved from this file, never from the cwd. */
@@ -43,7 +44,33 @@ export const projectPolicyCompiled = (cwd: string): string => join(projectDir(cw
 /** The reviewed-but-not-accepted draft. The server and the hook never read it. */
 export const projectPolicyPending = (cwd: string): string => join(projectDir(cwd), 'policy-compiled.pending.json');
 
-export type PolicySource = 'env' | 'project' | 'package';
+/** A project's pointer file. Says where its compiled policy actually lives. */
+export const projectConfig = (cwd: string): string => join(projectDir(cwd), 'config.json');
+
+/**
+ * The vault — where the compiled policy lives, OUTSIDE the project the agent
+ * works in. M4 attack 8 deleted a compiled policy that sat inside the
+ * workspace; M5 moved it out, and the reason it works is that the policy's own
+ * "stay inside the project" clause then governs the vault path. Putting it back
+ * inside the project would undo that, so `init` never does.
+ *
+ * One directory per project, under the user's home, named after the project so
+ * a human can find it, hashed so two projects with the same basename cannot
+ * collide.
+ */
+export const vaultRoot = (home: string): string => join(home, '.warrant', 'projects');
+
+export function vaultFor(projectPath: string, home: string): string {
+  const full = resolve(projectPath);
+  const digest = createHash('sha256').update(full.toLowerCase()).digest('hex').slice(0, 10);
+  const label = basename(full).replace(/[^A-Za-z0-9._-]/g, '-') || 'project';
+  return join(vaultRoot(home), `${label}-${digest}`);
+}
+
+export const vaultPolicy = (vault: string): string => join(vault, 'policy-compiled.json');
+export const vaultManifest = (vault: string): string => join(vault, 'warrant-install.json');
+
+export type PolicySource = 'env' | 'vault' | 'project' | 'package';
 
 export interface PolicyLocation {
   readonly path: string;
@@ -63,6 +90,21 @@ export function resolvePolicy(
   if (explicit !== undefined && explicit.trim().length > 0) {
     return { path: isAbsolute(explicit) ? explicit : resolve(cwd, explicit), source: 'env' };
   }
+  // A project initialised by `warrant-mcp init` carries a pointer to its vault.
+  const pointer = projectConfig(cwd);
+  if (existsSync(pointer)) {
+    try {
+      const parsed = JSON.parse(readFileSync(pointer, 'utf8')) as { policy?: unknown };
+      if (typeof parsed.policy === 'string' && parsed.policy.trim().length > 0) {
+        const target = isAbsolute(parsed.policy) ? parsed.policy : resolve(cwd, parsed.policy);
+        if (existsSync(target)) return { path: target, source: 'vault' };
+      }
+    } catch {
+      // A corrupt pointer is not a licence to guess. Fall through, and the
+      // caller refuses with the message below.
+    }
+  }
+
   const project = projectPolicyCompiled(cwd);
   if (existsSync(project)) return { path: project, source: 'project' };
   const bundled = join(PACKAGE_ROOT, 'policy-compiled.json');
@@ -74,8 +116,13 @@ export function resolvePolicy(
 export function noPolicyMessage(cwd: string): string {
   return [
     `no compiled policy found for ${resolve(cwd)}.`,
-    `Looked at: $WARRANT_MCP_POLICY, then ${projectPolicyCompiled(cwd)}.`,
-    'Run "warrant-mcp init" to create one. Nothing compiles at enforcement time,',
-    'so a missing policy is a refusal rather than a pass.',
+    'Looked at, in order:',
+    '  $WARRANT_MCP_POLICY',
+    `  ${projectConfig(cwd)}  (the pointer "warrant-mcp init" writes)`,
+    `  ${projectPolicyCompiled(cwd)}`,
+    '',
+    'Fix: run "warrant-mcp init" in this directory. It needs no API key and takes',
+    'a second. Nothing compiles at enforcement time, so a missing policy is a',
+    'refusal rather than a pass.',
   ].join('\n');
 }

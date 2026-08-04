@@ -59,6 +59,9 @@ What was reused: the thinking. What was deliberately diverged:
   engine, handler or hook.**
 - **`src/cli/`** — system boundaries: the only files that read the clock, the
   environment, or spawn anything.
+- **`src/config/`** — where things live and how warrant merges into files it
+  does not own. `settings.ts` is pure JSON merging, so the promise that a
+  user's settings survive is testable without touching a disk.
 
 ## Invariants
 
@@ -86,6 +89,12 @@ Violating any of these breaks the product claim, not just a test.
 8. **Nothing compiles on a demo path.** `policy:review` is the one place a
    live compile is correct — a human is present and deciding.
 9. **Determinism.** Identical inputs, identical verdict, always.
+10. **`init` merges, never overwrites, and is exactly undoable.** It backs up
+    the original bytes of every file it modifies; `remove` restores them
+    byte-for-byte. A file it cannot parse is refused, not rewritten.
+11. **The compiled policy never lives inside the project it governs.** `init`
+    vaults it under `~/.warrant/projects/<project>/`, read-only. Putting it
+    back in the workspace would undo M5 and reopen M4 attack 8.
 
 ## What is deliberately NOT claimed
 
@@ -126,7 +135,7 @@ Two hard-won lessons, both found by attacking the thing in real sessions:
 
 ## Commands
 
-- `npm test` — full suite (currently **84 tests**). New test files must be
+- `npm test` — full suite (currently **98 tests**). New test files must be
   added to the script's explicit list; discovery is deliberate, not globbed.
 - `npm run typecheck` — `tsc --noEmit`, strict.
 - `npm run policy:review` / `policy:accept` / `policy:test -- "<action>"` —

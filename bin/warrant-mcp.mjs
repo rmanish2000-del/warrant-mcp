@@ -35,6 +35,7 @@ const NODE_ARGS = BUILT ? [] : ['--experimental-strip-types'];
 /** subcommand → [entry file, ...fixed args prepended to the user's own] */
 const COMMANDS = {
   init: [from('cli/init')],
+  remove: [from('cli/remove')],
   serve: [from('server/main')],
   hook: [from('hook/pretooluse')],
   review: [from('cli/authoring'), 'review'],
@@ -44,8 +45,9 @@ const COMMANDS = {
 
 const USAGE = `warrant-mcp — a policy firewall for AI agent tool calls
 
-  warrant-mcp init                 create .warrant/ in this project and print the
-                                   MCP and hook configuration to paste
+  warrant-mcp init                 wire this project up — policy, hook, MCP server.
+                                   No API key needed; enforcing when it returns.
+  warrant-mcp remove               undo init and restore your settings file
   warrant-mcp serve                run the MCP server on stdio (a client spawns this)
   warrant-mcp hook                 the PreToolUse hook entry (a hook config spawns this)
 
@@ -61,7 +63,7 @@ Docs: https://github.com/rmanish2000-del/warrant-mcp`;
 const [major, minor] = process.versions.node.split('.').map(Number);
 if (major < 22 || (major === 22 && minor < 6)) {
   process.stderr.write(
-    `warrant-mcp needs Node 22.6 or newer (found ${process.versions.node}) — it runs TypeScript directly, with no build step.\n`,
+    `warrant-mcp needs Node 22.6 or newer (found ${process.versions.node})\n`,
   );
   process.exit(1);
 }
