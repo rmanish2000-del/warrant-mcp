@@ -178,6 +178,12 @@ Properties of the architecture, not a backlog:
   can edit it — I got a targeted `Edit` through that left it `{}`. Detection is
   possible; prevention needs org-managed settings I do not control.
 - **TOCTOU.** The check runs before execution. The world can change in between.
+- **Enforcement is a Claude Code hook.** Another MCP client gets the tool, which
+  advises rather than enforces.
+- **It costs a Node process per matched tool call.** The decision is about
+  0.01ms; the process around it measured 220–430ms median across three runs on a
+  busy laptop, about half of that being Node starting at all, with a p95 tail
+  into the seconds under load. `demo/bench.mjs` is the script.
 
 This is a policy layer, not a sandbox. It belongs inside one.
 
