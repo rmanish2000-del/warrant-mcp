@@ -31,9 +31,15 @@ schema wins.
 ### `file_write_scope`
 - **The sentence it exists for:** "Only write inside src and tests — the
   rest of the repo is read-only to you."
-- The one **positive** form. Use only when the user names the writable area
-  positively; everything outside the named roots is refused, including files
-  at the project root.
+- The one **positive** form, and the broadest rule in the set: everything
+  outside the named roots is refused. Concretely, a policy scoped to `src`
+  and `tests` refuses editing `README.md`, `package.json`, and `.gitignore`
+  — the refusal lands on files the user has not thought about yet, so name
+  that consequence to them before they compile.
+- Exclusivity, not permission, is the trigger: "only ever touch drafts"
+  licenses a scope; "writing in app/ is fine" licenses nothing beyond
+  access — compiling permission into a scope narrows the user's authority
+  beyond their words.
 - Roots are **workspace-relative** — an absolute root is a schema rejection.
 
 ## Shell rules
