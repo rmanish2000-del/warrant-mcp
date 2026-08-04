@@ -237,6 +237,15 @@ every line below is the same and it has not fired.
   the installing project does not have. `skill-drift.test.ts` fails if either
   returns. To develop against the server in this repo, register it yourself
   with `claude mcp add` instead.
+- **Check CI after opening a PR. Local green is not final.** Run the suite
+  locally, then open the PR, then *watch the checks*. Learned the expensive way:
+  a PR on the sibling website repo was reported as verified on the strength of a
+  local run, and CI failed three jobs — a rule about third-party origins that no
+  local command runs, a broken-link check on an asset that did not exist yet,
+  and an accessibility assertion that passes locally and fails on the runner.
+  Every one of those was real. Where a repo has no CI — this one — `npm test`
+  and `npm run typecheck` are the authority, and they are run before the PR is
+  opened, not after.
 - **Never `git add -A`.** Name every path.
 - **Never read, print or echo `.env`.** Secrets stay in the environment.
 - **The npm token lives in the user-level `~/.npmrc` and nowhere else.** It is
