@@ -54,7 +54,12 @@ What was reused: the thinking. What was deliberately diverged:
   `adapter.ts` that maps Claude Code tool calls onto action kinds.
 - **`src/server/`** — MCP stdio server (`main.ts`), pure `handler.ts`,
   presentation in `present.ts`.
-- **`src/record/`** — the append-only authorization record. `types.ts` is pure
+- **`src/record/`** — the authorization record. **Append-only by convention,
+  not in fact**: the only writer appends and nothing enforces it, there is no
+  hash, chain or signature, and anyone who can reach the file can rewrite it.
+  Do not describe it as an audit trail anywhere — README and
+  SECURITY-SURFACE.md §4 both spell out the gap, and they are the wording to
+  match. `types.ts` is pure
   (parsing, the policy fingerprint); `store.ts` is the only writer; `observe.ts`
   is what the two boundaries call. Never imported by the engine, handler, hook
   adapter or presentation — see invariant 6.

@@ -104,7 +104,14 @@ checked. It shows tool calls the policy layer observed; anything outside that
 mapping &mdash; another client, a process that outlived the session, a shell
 expansion resolved after the verdict &mdash; leaves no line here. Recording is
 also best-effort by design, so that a failure to write can never turn a refusal
-into a pass. Times are UTC.</p>
+into a pass, which means a missing line proves nothing. Times are UTC.</p>
+<p><strong>It is not tamper-evident, and should not be read as an audit
+trail.</strong> The source is a plain text file, append-only by convention
+rather than in fact: anyone who can reach it can add, edit or delete a line,
+and there is no hash, chain or signature that would show it. Nothing outside
+this machine can verify any of it. Treat this page as a legible record of what
+was decided here, offered in good faith &mdash; not as evidence against
+someone with an interest in what it says.</p>
 </footer>
 </main>
 <script>

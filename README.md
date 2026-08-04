@@ -195,8 +195,12 @@ architecture rather than bugs awaiting a patch:
   case, making any fix a deliberate version bump rather than a silent change.
 
 A real deployment wants OS-level confinement, an egress proxy enforcing the
-host list at the network layer, hook settings the agent cannot edit, and an
-append-only record of verdicts. The full attack log and reasoning are in
+host list at the network layer, hook settings the agent cannot edit, and a
+verdict trail that survives an interested party. That last one is now partly
+here — every checked tool call is written to a local record, and `warrant-mcp
+report` reads it — but only partly: it is a plain file with no integrity check,
+and [what it is and is not](#what-the-record-is-and-what-it-is-not) says so in
+detail. The full attack log and reasoning are in
 [SECURITY-SURFACE.md](SECURITY-SURFACE.md), unsoftened. How the six routes
 were actually found, session by session — and how the seventh was found the
 next day by writing the spec instead:
@@ -206,9 +210,9 @@ next day by writing the spec instead:
 
 ## The record, and reading it
 
-Every tool call the hook checks appends one line to an append-only record that
-lives beside the compiled policy — outside your project, so the clause that
-protects the policy protects its record too. Then:
+Every tool call the hook checks appends one line to a record that lives beside
+the compiled policy — outside your project, so the clause that protects the
+policy protects its record too. Then:
 
 ```bash
 warrant-mcp report
@@ -236,9 +240,43 @@ home directories and login names *before* anything is written; if it would leak,
 the command refuses and no file is created. Paths are rewritten first — your
 workspace to `.`, your home to `~`, anyone else's login name to `<user>`.
 
-The record is best-effort on purpose: a failure to write can never turn a
-refusal into a pass, so the report tells you it is evidence of what was decided
-rather than proof that everything decided was recorded.
+### What the record is, and what it is not
+
+Read this before treating it as an audit trail, because it is not one.
+
+**It is a plain text file, and anyone who can reach it can rewrite it.**
+`decisions.jsonl` is one JSON object per line. It is **append-only by
+convention, not in fact**: the only code that writes it appends, and nothing
+enforces that. There is no append-only filesystem mode, no lock, and no
+permission that would stop an edit. The compiled policy beside it is made
+read-only; the record cannot be, because it has to stay writable to be written
+to.
+
+**There is no integrity check of any kind.** No hash, no chain linking one line
+to the next, no signature. Delete a line, reorder the file, or write a
+convincing line by hand, and nothing detects it — the reader validates that a
+line is *well-formed*, never that it is *genuine*. A forged entry that parses is
+indistinguishable from a real one.
+
+**Nothing outside the machine can verify it.** There is no external witness, no
+notarisation, and nothing is transmitted anywhere. A report built from it is a
+rendering of a local file, and it is exactly as trustworthy as the machine and
+the person handing it to you.
+
+**A missing line does not mean the action did not happen.** Recording is
+deliberately best-effort: it runs after the verdict and swallows every failure,
+because a record that can fail a tool call has stopped being a record and become
+a new way to break your work. A full disk or a read-only vault costs you lines,
+silently.
+
+**What it is,** then: a local, human-readable log of what this machine decided,
+good for review, for noticing a clause that fires constantly, and for seeing
+when a policy edit changed behaviour. It is evidence, not proof.
+
+If you need an audit trail that survives an interested party — append-only
+storage, hash chaining, signing, or shipping lines off the machine as they are
+written — none of that is here, and the honest place to build it is your
+logging infrastructure rather than this file.
 
 ---
 
