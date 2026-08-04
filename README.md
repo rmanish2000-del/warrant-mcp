@@ -153,6 +153,14 @@ and are properties of the architecture rather than bugs awaiting a patch:
 - **Network egress is only as good as the mapping.** Tool-driven fetches are
   covered; an MCP server's own outbound calls are not.
 - **TOCTOU.** The check runs before execution; the world can change in between.
+- **Enforcement is a Claude Code hook.** Any other MCP client gets the
+  `check_action` tool, which advises and does not enforce — an agent that does
+  not call it is not constrained by it.
+- **It costs a process per matched tool call.** The decision itself is about
+  0.01ms, but the hook is a separate Node process, so end to end it measured
+  220–430ms median across three runs on a busy Windows laptop — roughly half of
+  that being Node starting at all, and a p95 tail into the seconds when the
+  machine is loaded. Measure your own with `node demo/bench.mjs`.
 - **The model's own refusals are not enforcement.** A route the model declines
   is untested, not safe.
 - **The hook configuration is a file in your project**, so an agent with write
