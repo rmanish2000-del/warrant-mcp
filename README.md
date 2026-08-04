@@ -193,6 +193,26 @@ hand. The skill writes policy text only — it never enforces anything,
 and it never claims a sentence will compile. `warrant-mcp review` is the
 authority; if review refuses, the refusal is right.
 
+What that looks like in practice. The sentence people write first:
+
+> Don't touch secrets, never rewrite history, and don't install anything.
+
+Three real intents, and the compiler refuses the whole policy: "secrets" is
+a judgement call, and neither "history" nor "anything" names a command it is
+allowed to guess. The same intents as the skill writes them, after one
+question about your stack:
+
+> 1. Leave my .env alone, and never touch anything ending in .pem or .key.
+> 2. Never rewrite history: no git rebase, no git commit --amend, no git
+>    reset --hard.
+> 3. Don't install new dependencies with npm — no npm install, no npm i, no
+>    npm add.
+
+Same protections, now decidable from the words alone. That is the craft the
+skill packages: naming things is the human's authority to exercise, and the
+skill's job is to ask for the names — and to explain, when a sentence cannot
+work, why the boundary is where it is.
+
 ## Where the policy is looked for
 
 1. `WARRANT_MCP_POLICY` — an absolute path. `init` writes this into both
