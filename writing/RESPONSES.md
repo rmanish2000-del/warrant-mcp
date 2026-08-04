@@ -110,7 +110,7 @@ the allowlist says what the agent may reach for, the policy says what it may do.
 
 ---
 
-## Two I cannot answer from the repo
+## One I cannot answer from the repo
 
 State the gap rather than improvising.
 
@@ -121,12 +121,26 @@ State the gap rather than improvising.
 > MCP tool, which is advice. "Coverage is per-tool and per-client" in the limits
 > section is exactly this.
 
-**"What's the performance cost?"**
+**"What's the performance cost?"** — measured, so give the number
 
-> I haven't measured per-call latency, so I won't quote a number. What I can say
-> is what it does: reads a cached JSON policy from disk and runs pure string and
-> path comparisons — no network, no model, no compile at enforcement time. If
-> someone measures it, I'd publish the figure.
+> The decision is free — about 0.01ms with the policy in memory, across all
+> three action kinds, over 20,000 iterations each.
+>
+> What you pay for is that the hook is a separate Node process per matched tool
+> call. End to end that came out at 220–430ms median across three runs on a busy
+> Windows laptop, and about half of that was `node -e 0` — Node starting at all.
+> The p95 tail reaches into the seconds when the machine is loaded, and I'd
+> rather say that than quote the median alone.
+>
+> `demo/bench.mjs` in the repo is the script, so you can get your own number
+> rather than trusting mine.
+
+If they say that's slow: agree, and be specific about what it isn't. It is per
+*matched* tool call, it sits behind a model round trip that takes seconds
+anyway, and roughly half of it is Node rather than warrant. If they say it should
+be a long-running process instead of a spawn — that is the right instinct and
+the honest answer is that the hook contract is a process invocation, so it would
+need a resident helper, which does not exist today.
 
 Never invent a number. The post's only measured figures are a range because they
 drifted between runs.
