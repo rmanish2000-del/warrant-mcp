@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: A bypass that leaves no trace, or a supply-chain problem
+    url: https://github.com/rmanish2000-del/warrant-mcp/blob/main/SECURITY.md
+    about: Report privately by email instead of opening a public issue.
+  - name: What already gets through
+    url: https://github.com/rmanish2000-del/warrant-mcp/blob/main/SECURITY-SURFACE.md
+    about: Glob expansion, obfuscation, symlinks, per-tool coverage, TOCTOU — documented limits, not new findings.
+  - name: How this was broken during the build
+    url: https://github.com/rmanish2000-del/warrant-mcp/blob/main/writing/bypass-hunt.md
+    about: Nine sessions, six routes through, five closed. Useful context before filing.
