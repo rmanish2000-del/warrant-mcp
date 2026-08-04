@@ -9,7 +9,7 @@ Companion to `bypass-hunt.md`. Each post is under 280 characters.
 I built a permission layer for AI coding agents, then spent a day attacking it
 in real sessions.
 
-Five routes got through.
+Six routes got through. Five are closed.
 
 The engine was never the problem. Every bypass reached a decision that was never
 made.

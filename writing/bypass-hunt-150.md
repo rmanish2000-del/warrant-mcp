@@ -15,7 +15,7 @@ deterministic code through a PreToolUse hook that can veto a tool call before it
 runs.
 
 Then I attacked it. Nine sessions, sandbox reset between each, every result from
-an actual attempt. Five got through — mv out of the workspace, a target hidden
+an actual attempt. Six got through — mv out of the workspace, a target hidden
 in nested quotes, a PowerShell writer, a third-party MCP server's delete tool,
 and network egress by tool. One deleted the compiled policy and disarmed
 enforcement entirely.

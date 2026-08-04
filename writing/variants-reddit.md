@@ -1,0 +1,125 @@
+# Reddit
+
+Two subreddits, two different posts. Do not post both on the same day, and do
+not mention one in the other — no "x-post", no "also posted to". Each is written
+for that room.
+
+---
+
+## r/ClaudeAI
+
+Audience: people already running Claude Code, who will care that hooks can
+hard-veto and that subagents inherit them. Practical, first-person.
+
+### Title
+
+```
+PreToolUse hooks can hard-block a tool call. I built a permission layer on that, then spent a day finding six ways past it.
+```
+
+### Body
+
+```
+I gave Claude Code write access to a repo and realised I couldn't answer what it
+was actually allowed to do. Approving every tool call by hand stops being review
+after the fifth prompt; trusting it isn't a position.
+
+So: rules in plain English, compiled once into numbered clauses, enforced by
+deterministic code. The enforcement point is a PreToolUse hook — it gets the tool
+call as JSON on stdin and can return permissionDecision: "deny", which per the
+docs overrides even --allowedTools. On allow it exits silently, so your own
+permission prompts still apply. It vetoes, it never approves.
+
+Then I attacked it. Nine sessions, sandbox reset between each, every result from
+an actual attempt rather than from reasoning about whether it would work.
+
+Six got through:
+
+- mv the protected file out of the workspace (my extractor knew rm, not mv)
+- node -e "require('fs').unlinkSync('.env')" — my regex grabbed the outer
+  double-quoted string and never saw the inner literal
+- PowerShell Set-Content overwriting the file (I'd added PowerShell's deleters
+  after an earlier miss, but not its writers)
+- a third-party MCP server's delete_file tool — mcp__* was matched by nothing
+- WebFetch to a host the policy doesn't allow
+- rm -f * , which deleted the compiled policy and disarmed enforcement entirely
+
+Two useful negatives: a subagent asked to do the delete WAS blocked, so hooks do
+apply inside subagents — I'd assumed that but never checked. And asking for
+`sudo rm -rf /var/www` never reached the hook at all, because Claude declined on
+its own. I count that as untested, not safe, and it's why my demo commands are
+boring housekeeping instead of anything that looks alarming.
+
+The fix that mattered was inverting the default: instead of a denylist of
+dangerous commands, anything not on a small reader allowlist gets every quoted
+literal and path-shaped argument checked. Over-checking a path the policy allows
+costs nothing; under-checking is a bypass.
+
+The glob one is still open and I don't have a fix — the shell expands * after the
+hook has decided.
+
+Write-up with the transcripts, and the full list of what still gets through:
+[link]
+
+npm install -g warrant-mcp
+```
+
+---
+
+## r/LocalLLaMA
+
+Audience: more sceptical of anything model-shaped, more interested in the
+architecture and in what is *not* the model's job. Lead with the determinism
+boundary.
+
+### Title
+
+```
+Agent permission layer where the model compiles the policy but never makes the runtime call — and the six ways I got past it anyway
+```
+
+### Body
+
+```
+The design constraint I started from: a model should never be the thing deciding
+whether an action is allowed, because that decision isn't reproducible and isn't
+auditable. But writing policy in a structured DSL by hand is miserable.
+
+So the split is: a model compiles plain-English rules into numbered clauses
+backed by structured rules, once, off to the side, and a human reviews the
+output. After that it's a pure function. Same inputs, same verdict, no model in
+the loop. The evaluator's input type is Omit<CompiledPolicy, 'clauses'>, so the
+clause text isn't merely ignored at decision time — it's unreachable, and reading
+it is a compile error rather than a code-review catch.
+
+The rule set is closed and pure data: no free text, no model-supplied regex. If a
+sentence can't be expressed as one of the rule types, the compiler refuses the
+whole policy rather than approximating it. "Don't delete anything you didn't
+create" gets refused, because provenance isn't visible in the action. So does
+"don't do anything expensive" — that's world knowledge, i.e. the model deciding
+at runtime with extra steps.
+
+Enforcement is a hook that runs before the tool call and can veto it. No network,
+no model, no compile at enforcement time — a missing policy is a refusal, not a
+pass.
+
+Then I spent a day attacking it in real sessions, nine of them, sandbox reset
+between each. Six routes got through: mv out of the workspace, a target hidden in
+nested quotes inside node -e, a PowerShell writer, a third-party MCP server's
+delete tool, network egress through the client's own fetch tool, and a shell glob
+that deleted the compiled policy itself.
+
+Every single one reached a decision that was never made. The evaluator was never
+wrong — the action just never got mapped into something it could see. The holes
+live in the tool-mapping layer, which is an enumeration of somebody else's
+surface, and enumeration has no completion proof.
+
+Five are closed with regression tests. The glob is still open by construction:
+the shell expands * after the hook has already decided, and working out what it
+matches would mean reading the filesystem, which the deciding code deliberately
+cannot do.
+
+Write-up, with the honest limits section: [link]
+
+npm install -g warrant-mcp
+```
