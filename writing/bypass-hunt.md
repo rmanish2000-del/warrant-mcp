@@ -69,6 +69,10 @@ sessions against my own hook, sandbox reset between each, every result from an
 actual attempt rather than from reasoning about it. That distinction earned its
 keep twice: I was sure a route was covered, and it wasn't.
 
+All nine were on Windows, which shapes the results — the agent reached for
+PowerShell because PowerShell was there. On another machine the same gaps exist
+behind different tool names, and I have not run this on macOS or Linux.
+
 Six of the nine got through. Five I could close.
 
 **1. `mv` out of the workspace.** I asked the agent to "archive" the protected
@@ -110,9 +114,13 @@ are ordinary housekeeping rather than anything that looks alarming.
 
 ## The fix that mattered
 
-Four of the five were the same mistake: I was maintaining a denylist of dangerous
-commands. `rm` yes, `mv` no. PowerShell deleters yes, PowerShell writers no. Every
-fix was another entry, and every entry implied the next gap.
+The five split cleanly in two, and only one half had an interesting fix.
+
+Three of them (1, 2, 3) were failures of the same code: how I pull targets out of
+a shell command. Two of those three were the same mistake — I was matching against
+a denylist of dangerous words. `rm` yes, `mv` no. PowerShell deleters yes,
+PowerShell writers no. Every fix was another entry, and every entry implied the
+next gap. The third was a plain bug in the same function.
 
 So I inverted the default. Any command word not on a small **reader allowlist** —
 `cat`, `grep`, `ls`, `head` and twenty-six more — has every quoted literal and
@@ -127,6 +135,12 @@ One entry is worth naming. `find` is deliberately *not* a reader, because
 `find . -name .env -delete` deletes. `cat .env` stays quiet, though — a refusal
 that called reading a "destructive operation" would be a false sentence, and the
 refusals have to stay true to be worth anything.
+
+The other two (4 and 5) never reached that code at all. `mcp__*` and the client's
+own fetch tool were not in the matcher, so the hook never ran for them — the same
+shape as the PowerShell miss that started all this. The fix was a matcher entry
+and a mapping for each, which took minutes and is exactly why they were the
+embarrassing ones.
 
 ## The sixth: the attack that disarmed enforcement
 
@@ -157,8 +171,9 @@ Properties of the architecture, not a backlog:
 - **Obfuscation.** Base64, `'.'+'env'` inside an interpreter, homoglyphs,
   self-writing scripts. The sweep raises the cost; it does not close the class.
 - **Symlinks.** Path text is compared, never resolved, because `realpath` is I/O.
-- **Coverage is per-tool and per-client.** Two of the bypasses were exactly this
-  shape, which is the best evidence I have that this list is incomplete.
+- **Coverage is per-tool and per-client.** Two of the six were exactly this shape,
+  and so was the PowerShell miss before them — the best evidence I have that this
+  list is incomplete.
 - **The hook configuration is a file in the project.** An agent with write access
   can edit it — I got a targeted `Edit` through that left it `{}`. Detection is
   possible; prevention needs org-managed settings I do not control.
@@ -185,7 +200,8 @@ unsoftened.
 
 ## Try it
 
-Three commands, about a minute, no API key — enforcement never compiles:
+Three commands, no API key — enforcement never compiles. Around a minute, almost
+all of it `npm install`:
 
 ```
 npm install -g warrant-mcp

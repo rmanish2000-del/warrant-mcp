@@ -40,13 +40,15 @@ that points at another platform.
 | `variants-hackernews.md` | title, author's first comment, likely objections |
 | `variants-reddit.md` | r/ClaudeAI and r/LocalLLaMA — separate posts, no cross-post language |
 | `variants-devto.md` | frontmatter and tags for dev.to and Hashnode |
+| `PUBLISH-CARD.md` | the one page to follow on the day |
 
 ## Before publishing anything
 
 - Re-run the three commands in the post's "Try it" section from an empty
-  directory. They were verified against the published package on 4 August 2026;
+  directory. Verified against the published package three times on 4 August 2026;
   verify again on the day, because the claim is about what a reader will
-  experience, not about what once worked.
+  experience, not about what once worked. The end-to-end time ranged 43–71s
+  across runs, which is why the post gives a range rather than a figure.
 - Check the bypass count in every variant still matches `SECURITY-SURFACE.md`.
   Six routes got through in the nine sessions; five are closed. An earlier draft
   of the post said five got through, which was wrong.

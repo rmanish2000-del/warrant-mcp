@@ -18,13 +18,13 @@ anyway. No colon-subtitle, no numbers in the title; HN readers discount both.
 ```
 Author here. Two things I'd flag before anyone reads it as a security claim.
 
-First, six routes got through, not five — the sixth is a shell glob, and it's
-still open. `rm -f *` gets expanded by the shell after my hook has already
-decided, so the hook sees the literal `*` and nothing else. Knowing what it
-matches would mean reading the filesystem, and the deciding code deliberately
-imports no filesystem capability (there's a test that greps those modules for
-node:fs and friends and fails if one shows up). I don't have a fix for that
-class, only the observation that it exists.
+First: the sixth route is still open, and it's a shell glob. `rm -f *` gets
+expanded by the shell after my hook has already decided, so the hook sees the
+literal `*` and nothing else. Working out what it matches would mean reading the
+filesystem, and the deciding code deliberately imports no filesystem capability
+(there's a test that greps those modules for node:fs and friends and fails if one
+shows up). I don't have a fix for that class, only the observation that it
+exists.
 
 Second, and this is the part I'd want scrutinised: every one of these bypasses
 reached a decision that was never made. The evaluator was never wrong. The

@@ -37,11 +37,11 @@ Then open Claude Code in that directory and ask it to delete `.env`. The agent
 will genuinely try; the hook blocks the tool call before it executes, and the
 file is still there afterwards.
 
-**About forty seconds from an empty directory to that first refusal**, most of
-it `npm install`. Measured end to end on a Windows laptop, installing from npm:
-43.3s, of which 37.3s was the install itself — `init` took 2.6s and the check
-3.4s. Your machine will differ; nothing after the install waits on a network or
-a model.
+**Around a minute from an empty directory to that first refusal**, and almost
+all of it is `npm install`. Four runs on the same Windows laptop came in between
+43 and 71 seconds end to end, with the install accounting for 37 to 60 of that;
+`init` and the check are a few seconds each. Your machine will differ. Nothing
+after the install waits on a network or a model.
 
 Changed your mind?
 

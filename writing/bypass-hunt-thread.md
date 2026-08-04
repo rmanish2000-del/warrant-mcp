@@ -41,7 +41,7 @@ unlisted host.
 
 **4/5**
 
-Four of five were the same mistake: a denylist of dangerous commands.
+Two were the same mistake: a denylist of dangerous commands.
 
 So I inverted it. Anything not on a small reader allowlist gets every quoted
 literal and path-shaped argument checked.
