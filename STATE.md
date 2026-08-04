@@ -24,7 +24,8 @@ Each of these was run, not reasoned about.
   the component inventory shows one skill and zero MCP servers.
 - **The bypasses.** Nine adversarial sessions; six routes got through, five are
   closed with regression tests named for the attack that opened each. Full log
-  in `SECURITY-SURFACE.md`.
+  in `SECURITY-SURFACE.md`. A seventh route was found separately, by writing
+  the spec rather than by attacking, and is open on purpose (below).
 - **Latency.** The decision is ~0.01ms. The Node process around it measured
   220–430ms median across three runs. `demo/bench.mjs` reproduces it.
 - **The format is specified.** `SPEC.md` 0.1.0 defines the artifact, the

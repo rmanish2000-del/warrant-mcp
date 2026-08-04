@@ -149,9 +149,12 @@ side needs. [`spec/README.md`](spec/README.md) is the porting guide.
 
 **This is a policy layer, not a sandbox. It should be deployed inside one.**
 
-Nine adversarial sessions were run against it; five bypasses were found and
-closed, each with a regression test. These classes remain open by construction,
-and are properties of the architecture rather than bugs awaiting a patch:
+Nine adversarial sessions were run against it. Six routes got through; five are
+closed, each with a regression test named for the attack that opened it. A
+seventh was found later, while writing [SPEC.md](SPEC.md) rather than by
+attacking anything, and is deliberately still open — see the last bullet below.
+These classes remain open by construction, and are properties of the
+architecture rather than bugs awaiting a patch:
 
 - **Shell glob and variable expansion.** The hook sees `rm -f *`; the shell
   expands it after the decision. Same for `$VAR`, command substitution and
@@ -164,9 +167,9 @@ and are properties of the architecture rather than bugs awaiting a patch:
   project pointing out of it passes the workspace clause.
 - **Coverage is per-tool and per-client.** Only Claude Code tool calls are
   hooked. A new tool, another MCP client, an unusual field name, or a process
-  that outlives the session are all outside. Two of the five bypasses found
-  were exactly this shape, which is the best evidence that the list above is
-  not exhaustive.
+  that outlives the session are all outside. Two of the six routes found were
+  exactly this shape, which is the best evidence that the list above is not
+  exhaustive.
 - **Network egress is only as good as the mapping.** Tool-driven fetches are
   covered; an MCP server's own outbound calls are not.
 - **TOCTOU.** The check runs before execution; the world can change in between.
@@ -182,6 +185,14 @@ and are properties of the architecture rather than bugs awaiting a patch:
   is untested, not safe.
 - **The hook configuration is a file in your project**, so an agent with write
   access can edit it. Org-managed settings are the real answer.
+- **A global flag with a separate-word value displaces the subcommand.**
+  `git -c core.pager=cat push --force` slips a rule that denies
+  `git push --force`, because `core.pager=cat` lands where the subcommand was
+  expected; `git --no-pager push --force` is denied, because that flag consumes
+  nothing. Closing it needs per-command knowledge of which flags take values —
+  knowledge this format does not carry and a model may not supply at runtime —
+  so it is specified in [SPEC.md](SPEC.md) §3.3.5 and pinned by a conformance
+  case, making any fix a deliberate version bump rather than a silent change.
 
 A real deployment wants OS-level confinement, an egress proxy enforcing the
 host list at the network layer, hook settings the agent cannot edit, and an
