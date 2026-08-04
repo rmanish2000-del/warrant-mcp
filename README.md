@@ -235,20 +235,19 @@ JavaScript in `dist/`, because Node refuses to strip types under
 
 ## Prior work
 
-Everything in this repository was written **before** the Push to Prod hackathon
-(8 August 2026, Bengaluru) that it was built for. The state at the end of the
-core build is tagged `pre-event-2026-08-08`:
+The deterministic authorization engine and the plain-English-to-clauses
+approach come from an earlier project of mine,
+[warrant](https://github.com/rmanish2000-del/warrant), built for a payments
+hackathon on 1–2 August 2026. warrant-mcp is a separate repository that applies
+that thinking to agent tool calls; it does not fork or vendor that codebase.
+
+The core build — M1 through M7, ending with 77 tests, the MCP server, hook
+enforcement, the adversarial audit and the authoring loop — is tagged
+`m7-complete-2026-08-03`. Everything after it is packaging and documentation:
 
 ```bash
-git log pre-event-2026-08-08..HEAD
+git log m7-complete-2026-08-03..HEAD
 ```
-
-Commit dates are the record. The deterministic authorization engine and the
-plain-English-to-clauses approach come from an earlier project of mine,
-[warrant](https://github.com/rmanish2000-del/warrant), built for a payments
-hackathon on 1–2 August 2026 and public. warrant-mcp is a separate repository
-that applies that thinking to agent tool calls; it does not fork or vendor that
-codebase.
 
 ## License
 
