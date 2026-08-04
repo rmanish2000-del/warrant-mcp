@@ -20,7 +20,8 @@ import { fileURLToPath } from 'node:url';
 import { POLICY_JSON_SCHEMA } from '../compiler/schema.ts';
 
 const PACKAGE_ROOT = fileURLToPath(new URL('../..', import.meta.url));
-const RULE_SET_REFERENCE = resolve(PACKAGE_ROOT, 'skills', 'warrant-policy-author', 'references', 'rule-set.md');
+const SKILL_DIR = resolve(PACKAGE_ROOT, 'skills', 'warrant-policy-author');
+const RULE_SET_REFERENCE = resolve(SKILL_DIR, 'references', 'rule-set.md');
 
 interface RuleVariant {
   readonly required: readonly string[];
@@ -76,4 +77,63 @@ test('the marketplace manifest points at skill folders that exist, and npm ships
   }
   const packageJson = JSON.parse(readFileSync(resolve(PACKAGE_ROOT, 'package.json'), 'utf8')) as { files: string[] };
   assert.ok(packageJson.files.includes('skills/'), 'package.json "files" no longer ships skills/ — npm installs would lose the skill');
+});
+
+test('the rule-type count stated in prose matches the schema', () => {
+  // The count is written out in words in two places a reader trusts, and a
+  // number in prose is the first thing to go stale when a rule type is added.
+  const n = variants.length;
+  const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+  const spelled = words[n] ?? String(n);
+  for (const [label, file] of [
+    ['the skill reference', RULE_SET_REFERENCE],
+    ['the README', resolve(PACKAGE_ROOT, 'README.md')],
+  ] as const) {
+    assert.match(
+      readFileSync(file, 'utf8'),
+      // Tolerant of wording ("eight rule types", "eight closed rule types"),
+      // strict about the number.
+      new RegExp(`${spelled}[^.\n]{0,20}rule types`, 'i'),
+      `${label} should say "${spelled} … rule types" — the schema has ${n}`,
+    );
+  }
+});
+
+test('nothing shipped promises that a policy will compile', () => {
+  // SKILL.md's own constraint 2 forbids the skill from claiming a sentence
+  // compiles, and the README repeats the promise to the reader. Only
+  // `warrant-mcp review` can determine it, so a description that says
+  // otherwise is the package contradicting itself in the place a user reads
+  // first.
+  const PROMISE = /compiles? on the first attempt/i;
+  const skill = readFileSync(resolve(SKILL_DIR, 'SKILL.md'), 'utf8');
+  const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(skill)?.[1] ?? '';
+  assert.ok(frontmatter.length > 0, 'SKILL.md has no frontmatter — the description is what a marketplace shows');
+  assert.doesNotMatch(
+    frontmatter,
+    PROMISE,
+    'the skill description promises first-attempt compilation, which only `warrant-mcp review` can determine',
+  );
+  assert.doesNotMatch(
+    readFileSync(resolve(PACKAGE_ROOT, '.claude-plugin', 'marketplace.json'), 'utf8'),
+    PROMISE,
+    'the marketplace manifest promises first-attempt compilation',
+  );
+});
+
+test('the plugin ships the skill and nothing else that auto-loads', () => {
+  // The marketplace entry sets `source: "./"`, so the repository root IS the
+  // plugin root — and Claude Code loads a plugin's `.mcp.json` and `hooks/`
+  // from there. A `.mcp.json` at the root therefore wires an MCP server into
+  // every install, which the README explicitly promises the plugin does not
+  // do, and which would point at a policy the installing project has not got.
+  //
+  // Found by running `claude plugin install` and reading the component
+  // inventory: it said "MCP servers (1)". Verified against the plugin cache.
+  for (const autoloaded of ['.mcp.json', 'hooks']) {
+    assert.ok(
+      !existsSync(resolve(PACKAGE_ROOT, autoloaded)),
+      `${autoloaded} at the repository root is loaded by the plugin, contradicting the README's promise that the plugin wires neither the MCP server nor the hook. Keep dev config out of the plugin root.`,
+    );
+  }
 });

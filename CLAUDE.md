@@ -148,6 +148,13 @@ Two hard-won lessons, both found by attacking the thing in real sessions:
 
 ## Conventions
 
+- **No `.mcp.json` or `hooks/` at the repository root.** The marketplace entry
+  sets `source: "./"`, so the repo root is the plugin root, and Claude Code
+  auto-loads both from there — an `.mcp.json` here silently wires an MCP server
+  into every plugin install, contradicting the README and pointing at a policy
+  the installing project does not have. `skill-drift.test.ts` fails if either
+  returns. To develop against the server in this repo, register it yourself
+  with `claude mcp add` instead.
 - **Never `git add -A`.** Name every path.
 - **Never read, print or echo `.env`.** Secrets stay in the environment.
 - **The npm token lives in the user-level `~/.npmrc` and nowhere else.** It is
