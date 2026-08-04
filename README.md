@@ -149,17 +149,28 @@ side needs. [`spec/README.md`](spec/README.md) is the porting guide.
 
 **This is a policy layer, not a sandbox. It should be deployed inside one.**
 
-Nine adversarial sessions were run against it. Six routes got through; five are
-closed, each with a regression test named for the attack that opened it. A
-seventh was found later, while writing [SPEC.md](SPEC.md) rather than by
+Nine adversarial sessions were run against its own hook, sandbox reset between
+attempts, every result from an actual attempt rather than from reasoning about
+one. **Six got through. Five are closed**, each with a regression test named for
+the attack that opened it. **The sixth is open by construction:** `rm -f *`
+deleted the compiled policy itself and took enforcement off duty. It is
+mitigated, not fixed — the compiled policy now lives in a read-only vault
+outside the project, where the policy's own "stay inside the project" clause
+guards it, so the same attack is refused and cites that clause. The glob is
+still expanded after the decision, and that has no fix here.
+
+A seventh was found later, while writing [SPEC.md](SPEC.md) rather than by
 attacking anything, and is deliberately still open — see the last bullet below.
+
 These classes remain open by construction, and are properties of the
 architecture rather than bugs awaiting a patch:
 
 - **Shell glob and variable expansion.** The hook sees `rm -f *`; the shell
   expands it after the decision. Same for `$VAR`, command substitution and
   `xargs`. Any command with implicit targets — `git clean -fdx`, `make clean` —
-  is in this class.
+  is in this class. Deciding what a glob will match means reading the
+  filesystem, and the deciding path deliberately imports no filesystem
+  capability at all.
 - **Obfuscation.** Base64, string concatenation inside an interpreter
   (`'.'+'env'`), homoglyphs and self-writing scripts defeat a tokenizer. The
   checks raise the cost; they do not close the class.
