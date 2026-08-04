@@ -54,6 +54,15 @@ What was reused: the thinking. What was deliberately diverged:
   `adapter.ts` that maps Claude Code tool calls onto action kinds.
 - **`src/server/`** — MCP stdio server (`main.ts`), pure `handler.ts`,
   presentation in `present.ts`.
+- **`src/record/`** — the append-only authorization record. `types.ts` is pure
+  (parsing, the policy fingerprint); `store.ts` is the only writer; `observe.ts`
+  is what the two boundaries call. Never imported by the engine, handler, hook
+  adapter or presentation — see invariant 6.
+- **`src/report/`** — `warrant-mcp report`, pure: `model.ts` aggregates,
+  `redact.ts` is screen safety both ways (rewrite what is private, scan for
+  what is secret), `client.ts` holds the page's CSS and script as strings,
+  `html.ts` renders. No clock, no filesystem; `src/cli/report.ts` is the
+  boundary.
 - **`src/authoring/`** — review-time only: rules→English, behaviour-diff
   corpus, unmapped guidance, CLI phrase parsing. **Never imported by the
   engine, handler or hook.**
@@ -80,10 +89,16 @@ Violating any of these breaks the product claim, not just a test.
    re-validated on every load.
 5. **Fail closed everywhere.** Malformed action, unreadable hook input,
    invalid cache, unknown rule → DENY.
-6. **A DENY performs no side effect.** The deciding modules import no
-   filesystem, process-spawning or network capability — `guard.test.ts`
-   enforces this by scanning their source. Do not add such an import; do not
-   weaken the scanner when its own prose trips it (reword the comment).
+6. **A DENY performs no side effect on the world the action aimed at.** The
+   deciding modules import no filesystem, process-spawning or network
+   capability — `guard.test.ts` enforces this by scanning their source. Do not
+   add such an import; do not weaken the scanner when its own prose trips it
+   (reword the comment). The authorization record is the one thing written
+   after a verdict, and it is written by the **boundary** (`pretooluse.ts`,
+   `server/main.ts`), never by the deciding path: `src/record/` is not in
+   `DECIDING_MODULES` and nothing in the deciding path imports it. Recording
+   cannot throw and its result is never read, so an unwritable record can
+   never turn an ALLOW into a block or a DENY into a pass.
 7. **The hook vetoes, never approves.** On ALLOW it exits silently so Claude
    Code's own permission flow still applies.
 8. **Nothing compiles on a demo path.** `policy:review` is the one place a
@@ -160,7 +175,15 @@ Two hard-won lessons, both found by attacking the thing in real sessions:
 
 ## Commands
 
-- `npm test` — full suite (currently **187 tests**). New test files must be
+- `warrant-mcp report [--since 7d] [--out <path>]` — render the record as one
+  self-contained HTML file. **Local only**: no server, no upload, nothing
+  fetched when the page opens. The rendered bytes are scanned for credentials
+  and machine identity *before* anything is written; a report that would leak
+  is never a file on disk. Deterministic apart from the generated-at stamp.
+  The visual identity is the **Prava family** carried over from the `warrant`
+  console (warm paper, teal accent, Inter + IBM Plex Mono) — named locally,
+  never loaded from a font CDN, because self-contained wins over exact type.
+- `npm test` — full suite (currently **227 tests**). New test files must be
   added to the script's explicit list; discovery is deliberate, not globbed.
 - `npm run typecheck` — `tsc --noEmit`, strict.
 - `npm run policy:review` / `policy:accept` / `policy:test -- "<action>"` —

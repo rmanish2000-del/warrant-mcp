@@ -192,6 +192,44 @@ bypasses were actually found, session by session:
 
 ---
 
+## The record, and reading it
+
+Every tool call the hook checks appends one line to an append-only record that
+lives beside the compiled policy — outside your project, so the clause that
+protects the policy protects its record too. Then:
+
+```bash
+warrant-mcp report
+```
+
+One `.html` file. Open it offline: the stylesheet, the script and the data are
+all inside it, and the page makes **no network request at all** when it opens.
+Nothing is uploaded, no server starts, and the record itself is only ever read.
+
+It is built around the four questions an auditor actually asks — what was
+attempted and what happened, what was refused and by which clause, what is
+repeating, and when behaviour changed because the policy did. A dense sortable
+table is the centre of it; filters AND together and every active one shows as a
+chip you can remove, with a running count of what they hide, so a filtered view
+can never be mistaken for the whole picture. The filter state lives in the URL
+fragment, so you can send someone exactly what you were looking at. Clauses that
+never fired are listed too — a rule nobody has tripped is either dead weight or
+untested.
+
+`--since 7d` narrows the window and the page says how much it excluded.
+`--out <path>` puts it somewhere else.
+
+**Treated as public.** The rendered bytes are scanned for credential shapes,
+home directories and login names *before* anything is written; if it would leak,
+the command refuses and no file is created. Paths are rewritten first — your
+workspace to `.`, your home to `~`, anyone else's login name to `<user>`.
+
+The record is best-effort on purpose: a failure to write can never turn a
+refusal into a pass, so the report tells you it is evidence of what was decided
+rather than proof that everything decided was recorded.
+
+---
+
 ## The MCP tool
 
 Beyond the hook, warrant exposes one tool, `check_action`, so an agent can ask
@@ -282,7 +320,7 @@ policy is a refusal, never a pass.
 | `.warrant/config.json` | pointer to the compiled policy |
 | `.claude/settings.json` | hook appended, **merged** — your other settings survive |
 | `.mcp.json` | `warrant` server added, merged |
-| `~/.warrant/projects/<project>/` | the compiled policy (read-only), your settings backup, and the record `remove` reads |
+| `~/.warrant/projects/<project>/` | the compiled policy (read-only), your settings backup, the undo record `remove` reads, and `record/` — the authorization record |
 
 A settings file it cannot parse is refused, not rewritten.
 
@@ -295,6 +333,7 @@ A settings file it cannot parse is refused, not rewritten.
 | `warrant-mcp init` | wire up this project — no API key; `--skill` also installs the policy-authoring skill |
 | `warrant-mcp remove` | undo it, restoring settings byte-for-byte |
 | `warrant-mcp test "<action>"` | dry-run one action; nothing is enforced or written |
+| `warrant-mcp report` | render the record as one local HTML file — `--since 7d`, `--out <path>` |
 | `warrant-mcp review` | compile the policy and show what changes (needs an API key) |
 | `warrant-mcp accept` | adopt the reviewed draft — never compiles |
 | `warrant-mcp serve` | the MCP server on stdio (a client spawns this) |
@@ -305,7 +344,7 @@ Requires Node ≥ 22.6. `npx warrant-mcp init` works without installing.
 ## Development
 
 ```bash
-npm test        # 187 tests, including the SPEC.md conformance corpus
+npm test        # 227 tests, including the SPEC.md conformance corpus
 npm run typecheck
 npm run demo    # the canonical checks with verdict banners, fully offline
 ```

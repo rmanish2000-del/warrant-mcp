@@ -56,7 +56,7 @@
     "demo:reset": "node --experimental-strip-types src/cli/stage.ts reset",
     "demo:check": "node --experimental-strip-types src/cli/stage.ts check",
     "demo:permit": "node --experimental-strip-types src/cli/stage.ts permit",
-    "test": "node --experimental-strip-types --test src/engine/evaluate.test.ts src/compiler/schema.test.ts src/hook/adapter.test.ts src/authoring/authoring.test.ts src/authoring/skill-drift.test.ts src/spec/conformance.test.ts src/config/paths.test.ts src/config/settings.test.ts src/config/install.test.ts src/server/guard.test.ts src/server/cache.test.ts",
+    "test": "node --experimental-strip-types --test src/engine/evaluate.test.ts src/compiler/schema.test.ts src/hook/adapter.test.ts src/authoring/authoring.test.ts src/authoring/skill-drift.test.ts src/spec/conformance.test.ts src/record/record.test.ts src/report/report.test.ts src/config/paths.test.ts src/config/settings.test.ts src/config/install.test.ts src/server/guard.test.ts src/server/cache.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

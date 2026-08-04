@@ -31,7 +31,12 @@ Each of these was run, not reasoned about.
   matching semantics and the fail-closed rules; `spec/corpus.json` is 76
   language-agnostic checks that this repo runs against its own engine, so the
   document and the code cannot drift apart silently.
-- **187 tests**, and `npm run typecheck` clean.
+- **The record and the report.** Fifteen tool calls driven through the real
+  hook wrote fourteen record lines (the unmapped `Read` wrote none) across two
+  policy versions; `warrant-mcp report` rendered them, and the page made zero
+  requests when opened in a browser. A record carrying a planted token made the
+  command refuse to write and name only the kind, never the value.
+- **227 tests**, and `npm run typecheck` clean.
 
 ## Assumed, not verified
 
@@ -60,6 +65,11 @@ Each of these was run, not reasoned about.
 - **The hook wiring is reachable from the workspace.** An agent with write
   access can edit `.claude/settings.json`. Detection is possible; prevention
   needs org-managed settings.
+- **The record is best-effort, and says so.** Recording happens after the
+  verdict and every failure is swallowed, because a record that can fail a tool
+  call has stopped being a record. So the report is evidence of what was
+  decided, not proof that everything decided was recorded. It is also not
+  tamper-evident: no signature, no chain. A real audit trail wants both.
 
 ## Not done
 

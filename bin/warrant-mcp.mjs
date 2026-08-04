@@ -38,6 +38,7 @@ const COMMANDS = {
   remove: [from('cli/remove')],
   serve: [from('server/main')],
   hook: [from('hook/pretooluse')],
+  report: [from('cli/report')],
   review: [from('cli/authoring'), 'review'],
   accept: [from('cli/authoring'), 'accept'],
   test: [from('cli/authoring'), 'test'],
@@ -51,6 +52,10 @@ const USAGE = `warrant-mcp — a policy firewall for AI agent tool calls
   warrant-mcp remove               undo init and restore your settings file
   warrant-mcp serve                run the MCP server on stdio (a client spawns this)
   warrant-mcp hook                 the PreToolUse hook entry (a hook config spawns this)
+
+  warrant-mcp report               render the authorization record as one local
+                                   HTML file — offline, self-contained, nothing
+                                   uploaded  [--since 7d] [--out <path>]
 
   warrant-mcp review               compile .warrant/policy.md and show what changes
                                    [the only command that calls the model]

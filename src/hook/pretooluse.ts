@@ -20,8 +20,10 @@
 import process from 'node:process';
 import { readPolicyCache } from '../compiler/cache.ts';
 import { noPolicyMessage, resolvePolicy } from '../config/paths.ts';
-import { decideToolCall, denyHookOutput } from './adapter.ts';
+import { assessToolCall, denyHookOutput } from './adapter.ts';
 import { renderOutcome } from '../server/present.ts';
+import { observeDecision } from '../record/observe.ts';
+import { resolveRecordDir } from '../config/paths.ts';
 import type { EvaluationContext } from '../engine/types.ts';
 
 const deny = (reason: string): never => {
@@ -75,9 +77,25 @@ const ctx: EvaluationContext = {
   caseInsensitivePaths: process.platform === 'win32',
 };
 
-const denied = decideToolCall(policyCache.compiled, ctx, toolName, input.tool_input);
-if (denied !== null) {
-  deny(renderOutcome(denied, false));
+const assessment = assessToolCall(policyCache.compiled, ctx, toolName, input.tool_input);
+
+// Record before deciding: `deny` exits the process, and a refusal is the line
+// an auditor most needs. Recording cannot throw and its result is not read —
+// a record that could block a tool call would have stopped being a record.
+if (assessment.governing !== null) {
+  observeDecision({
+    recordDir: resolveRecordDir(located, process.env),
+    policy: policyCache.compiled,
+    source: 'hook',
+    tool: toolName,
+    action: assessment.governing.check.action,
+    verdict: assessment.governing.outcome.verdict,
+    at: new Date(),
+  });
+}
+
+if (assessment.denied !== null) {
+  deny(renderOutcome(assessment.denied, false));
 }
 // Nothing denied: no output, no opinion — normal permission flow applies.
 process.exit(0);
