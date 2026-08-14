@@ -152,7 +152,7 @@ now exists and the list is corrected rather than left standing, because a
 requirement listed as absent while it is present is the same defect in the other
 direction.
 
-**What exists (0.2.3+).** Every tool call the hook checks appends one line to
+**What exists (0.2.4+).** Every tool call the hook checks appends one line to
 `decisions.jsonl` beside the compiled policy — so, in the vaulted layout, outside
 the workspace, where clause W1 governs a hooked attempt to reach it exactly as
 it governs the policy. A second file records each compiled policy version once,

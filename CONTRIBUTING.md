@@ -8,8 +8,9 @@ client owns and keeps extending. Enumeration has no completion proof, so every
 bypass someone finds is evidence about the shape of the ones nobody has found
 yet.
 
-Six routes got past it during the build. Five are closed, one is still open, and
-all of them are in [SECURITY-SURFACE.md](SECURITY-SURFACE.md), unsoftened.
+Six routes got past it during the build, and a seventh was found afterwards by
+writing the spec rather than by attacking. Five are closed, two are still open,
+and all of them are in [SECURITY-SURFACE.md](SECURITY-SURFACE.md), unsoftened.
 Yours will go in the same table with your name on it.
 
 **Open a [bypass report](https://github.com/rmanish2000-del/warrant-mcp/issues/new?template=bypass.yml).** If it is

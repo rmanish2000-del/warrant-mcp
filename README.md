@@ -149,7 +149,8 @@ side needs. [`spec/README.md`](spec/README.md) is the porting guide.
 
 **This is a policy layer, not a sandbox. It should be deployed inside one.**
 
-Nine adversarial sessions were run against its own hook, sandbox reset between
+Nine adversarial sessions were run against its own hook on **2026-08-03**,
+sandbox reset between
 attempts, every result from an actual attempt rather than from reasoning about
 one. **Six got through. Five are closed**, each with a regression test named for
 the attack that opened it. **The sixth is open by construction:** `rm -f *`
@@ -159,8 +160,10 @@ outside the project, where the policy's own "stay inside the project" clause
 guards it, so the same attack is refused and cites that clause. The glob is
 still expanded after the decision, and that has no fix here.
 
-A seventh was found later, while writing [SPEC.md](SPEC.md) rather than by
-attacking anything, and is deliberately still open — see the last bullet below.
+A seventh was found on **2026-08-04**, while writing [SPEC.md](SPEC.md) rather
+than by attacking anything, and is deliberately still open — see the last
+bullet below. So: **seven routes known, five closed, two open**, and the two
+open ones are named above and below rather than left for you to find.
 
 These classes remain open by construction, and are properties of the
 architecture rather than bugs awaiting a patch:
