@@ -43,3 +43,6 @@ dist/
 
 # npm auth. The token lives in the USER-level ~/.npmrc only — never here.
 .npmrc
+
+# Claude Code local session config (Browser-pane launch, etc). Machine-local, regenerable.
+.claude/
