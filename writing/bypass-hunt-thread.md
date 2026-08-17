@@ -11,7 +11,8 @@ in real sessions.
 
 Six routes got through. Five are closed.
 
-Then a seventh turned up the next day, and not from an attack.
+Then a seventh turned up the next day, and not from an attack. Two are still
+open.
 
 ---
 
