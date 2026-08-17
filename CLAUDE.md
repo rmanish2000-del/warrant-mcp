@@ -163,6 +163,22 @@ Two hard-won lessons, both found by attacking the thing in real sessions:
   allowlisted so refusal sentences stay true (`cat .env` is not a destructive
   operation); `find` is deliberately not a reader.
 
+## The bypass counts are two numbers, and they are never added
+
+Six routes got through in the **nine adversarial sessions of 2026-08-03**; five
+of those are closed. One further route — the `git -c` subcommand displacement —
+was found on **2026-08-04** by writing SPEC.md, not by attacking, and is open on
+purpose. **Never fold them into "seven in nine sessions."** That sentence
+describes a hunt that did not happen. Any mention of the seventh must say where
+it came from, because the origin is the point.
+
+This rule was written down in `writing/README.md` on the `publishing` branch,
+where a session working on `main` never sees it — and on 2026-08-17 a session
+put exactly the forbidden fold into the README for several minutes before
+finding the note. It is repeated here so the next one does not. Counts in this
+repo have now drifted three times; check `SECURITY-SURFACE.md` rather than
+recalling.
+
 ## Demo discipline
 
 - Beats, prompts and expected banners are pinned in [DEMO-CARD.md](DEMO-CARD.md).

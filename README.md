@@ -162,8 +162,10 @@ still expanded after the decision, and that has no fix here.
 
 A seventh was found on **2026-08-04**, while writing [SPEC.md](SPEC.md) rather
 than by attacking anything, and is deliberately still open — see the last
-bullet below. So: **seven routes known, five closed, two open**, and the two
-open ones are named above and below rather than left for you to find.
+bullet below. It is counted separately from the nine sessions on purpose: it
+came from stating what a rule means, not from an attack, and adding the two
+figures together would describe a hunt that never happened. Both of the open
+routes are named — here and below — rather than left for you to find.
 
 These classes remain open by construction, and are properties of the
 architecture rather than bugs awaiting a patch:
