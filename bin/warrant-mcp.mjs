@@ -15,6 +15,7 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
+import { checkDistStamp } from './dist-stamp.mjs';
 
 const PACKAGE_ROOT = fileURLToPath(new URL('..', import.meta.url));
 const entry = (relative) => fileURLToPath(new URL(relative, import.meta.url));
@@ -31,6 +32,21 @@ const entry = (relative) => fileURLToPath(new URL(relative, import.meta.url));
 const BUILT = existsSync(fileURLToPath(new URL('../dist/server/main.js', import.meta.url)));
 const from = (relative) => entry(BUILT ? `../dist/${relative}.js` : `../src/${relative}.ts`);
 const NODE_ARGS = BUILT ? [] : ['--experimental-strip-types'];
+
+/**
+ * In a checkout, a dist/ that predates the current commit is refused before
+ * anything runs — loudly, naming both commits, never by silently falling
+ * through to src/. A stale dist/ once shadowed newer source through a full
+ * green gate (2026-08-14); dist-stamp.test.ts pins this. Installed copies
+ * have no .git and are never checked.
+ */
+if (BUILT) {
+  const stamp = checkDistStamp(PACKAGE_ROOT);
+  if (!stamp.ok) {
+    process.stderr.write(stamp.message);
+    process.exit(1);
+  }
+}
 
 /** subcommand → [entry file, ...fixed args prepended to the user's own] */
 const COMMANDS = {
