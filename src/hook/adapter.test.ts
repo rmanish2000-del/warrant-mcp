@@ -142,7 +142,12 @@ test('M4 bypass 3 — the PowerShell write family overwrote the protected file',
     'Copy-Item junk-dir/file.txt .env',
     'Clear-Content .env',
     'New-Item -ItemType File -Force .env',
-    '[System.IO.File]::Delete("C:/ws/.env")',
+    // An absolute path to the workspace's OWN .env — built from WS so it is
+    // genuinely inside the workspace on every host. A hard-coded "C:/ws/.env"
+    // only sat inside the workspace on a dev machine whose cwd was the C: drive;
+    // on POSIX and on a D:-drive runner it is outside, and the drive-letter fix
+    // correctly denies it as W1 (outside) before W2 (protected) is even reached.
+    `[System.IO.File]::Delete("${resolve(WS, '.env').split(sep).join('/')}")`,
   ]) {
     denies('PowerShell', { command }, 'W2', command);
   }
