@@ -1,0 +1,29 @@
+name: CI
+
+# Runs on every PR and on pushes to main. The matrix exists because a
+# POSIX-only path bypass survived until the day before launch on a Windows-only
+# dev machine (see writing/bypass-hunt.md, "an eighth"): the suite must run on
+# Linux as well as Windows, or a cross-platform hole hides in a green local run.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # 22.x resolves to the latest 22 minor, which is >= 22.6 — the floor
+          # for --experimental-strip-types that the whole toolchain relies on.
+          node-version: '22.x'
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
