@@ -197,6 +197,19 @@ test('M4 — sed keeps its script out of the path sweep', () => {
   assert.equal(decide('Bash', { command: 'sed -i "s/a/b/" notes.md' }), null);
 });
 
+test('a traversal-shaped MCP tool name cannot hide a mutating verb', () => {
+  // The mutating-verb test reads the segment after the LAST "__", so padding
+  // the name with extra "__"-delimited or traversal-looking segments does not
+  // move a delete/write/move out of view.
+  denies('mcp__..__..__delete_file', { path: '/ws/.env' }, 'W2', 'traversal segments, verb still last');
+  denies('mcp__a__b__c__move', { destination: 'C:\\elsewhere\\x.txt' }, 'W1', 'deep name, move outside');
+  // Mixed-case verbs are normalised, so DELETE and Write are still caught.
+  denies('mcp__fs__DELETE_File', { path: '/ws/.env' }, 'W2', 'upper-case verb');
+  // A genuinely read-shaped name after the last "__" still maps to nothing,
+  // even with a scary-looking prefix — the name is the tool's, not the user's.
+  assert.equal(decide('mcp__delete__read_file', { path: '/ws/.env' }), null);
+});
+
 test('denyHookOutput emits the documented PreToolUse deny shape', () => {
   assert.deepEqual(denyHookOutput('because'), {
     hookSpecificOutput: {

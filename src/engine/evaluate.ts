@@ -10,8 +10,42 @@
  * the DENY. Shape validation runs first — a malformed action is refused
  * before any clause is consulted (fail closed).
  */
-import { resolve, sep } from 'node:path';
+import { isAbsolute, resolve, sep } from 'node:path';
 import type { Action, EvaluablePolicy, EvaluationContext, Rule, Verdict } from './types.ts';
+
+/**
+ * A path that is absolute under Windows or POSIX rules the HOST `node:path`
+ * does not itself recognise. This is the drive-letter bypass: enforcement runs
+ * on a POSIX host (the cloud hook), where `node:path` is the POSIX variant and
+ * treats `C:\elsewhere\x` or `\\server\share\x` as ordinary *relative* text.
+ * `resolve(root, "C:\\elsewhere\\x")` then lands the path BENEATH the workspace
+ * root, so every containment rule reads it as inside and the deny never fires.
+ *
+ * We recognise all three absolute shapes on every platform. A path recognised
+ * here but NOT by the host's `isAbsolute` is absolute-by-a-foreign-convention:
+ * it cannot live inside a workspace rooted under the other convention, so it is
+ * out of the workspace by construction. Fail closed — an absolute path we
+ * cannot place beneath the root is treated as outside it.
+ */
+function isForeignAbsolute(path: string): boolean {
+  const absoluteOnSomePlatform =
+    path.startsWith('/') || // POSIX absolute
+    /^[A-Za-z]:[\\/]/.test(path) || // Windows drive-letter: C:\ or C:/
+    /^[\\/]{2}/.test(path); // UNC \\server\share (or //server)
+  return absoluteOnSomePlatform && !isAbsolute(path);
+}
+
+/**
+ * The absolute location `path` denotes, interpreted from `root`. A relative
+ * path is joined to the root exactly as before. A foreign-absolute path
+ * (see {@link isForeignAbsolute}) is returned as its own location — separators
+ * unified so the containment comparison is textual and host-independent —
+ * rather than joined, so it is never mistaken for a child of the root.
+ */
+function locate(root: string, path: string): string {
+  if (isForeignAbsolute(path)) return path.replace(/\\/g, '/');
+  return resolve(root, path);
+}
 
 const ACTION_KINDS = ['file_delete', 'shell_command', 'http_request'] as const;
 
@@ -122,7 +156,7 @@ function violation(rule: Rule, action: Action, ctx: EvaluationContext): string |
     case 'file_delete_outside_workspace': {
       if (action.kind !== 'file_delete') return null;
       const root = resolve(ctx.workspaceRoot);
-      const resolved = resolve(root, action.path);
+      const resolved = locate(root, action.path);
       const inside =
         foldPath(resolved, ctx) === foldPath(root, ctx) ||
         foldPath(resolved, ctx).startsWith(foldPath(root + sep, ctx));
@@ -130,7 +164,7 @@ function violation(rule: Rule, action: Action, ctx: EvaluationContext): string |
     }
     case 'file_delete_protected': {
       if (action.kind !== 'file_delete') return null;
-      const resolved = resolve(ctx.workspaceRoot, action.path);
+      const resolved = locate(resolve(ctx.workspaceRoot), action.path);
       const segments = pathSegments(resolved).map((segment) => foldPath(segment, ctx));
       for (const protectedSegment of rule.segments) {
         if (segments.includes(foldPath(protectedSegment, ctx))) {
@@ -153,9 +187,9 @@ function violation(rule: Rule, action: Action, ctx: EvaluationContext): string |
     case 'file_write_scope': {
       if (action.kind !== 'file_delete') return null;
       const root = resolve(ctx.workspaceRoot);
-      const resolved = resolve(root, action.path);
+      const resolved = locate(root, action.path);
       const inside = rule.allowedRoots.some((allowed) => {
-        const allowedRoot = resolve(root, allowed);
+        const allowedRoot = locate(root, allowed);
         return (
           foldPath(resolved, ctx) === foldPath(allowedRoot, ctx) ||
           foldPath(resolved, ctx).startsWith(foldPath(allowedRoot + sep, ctx))

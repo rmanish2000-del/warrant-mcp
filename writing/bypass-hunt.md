@@ -261,6 +261,26 @@ what the thing does for a reader who cannot look at my code.
 That is the argument for writing the spec, made better than I could have made
 it: it found a bug in its own reference implementation.
 
+## Addendum: an eighth, caught by the fleet the day before launch
+
+The day before this went out, a sibling audit running the same test suite on
+Linux — not on the Windows laptop I develop on — turned three existing tests red
+that were green on my machine. Windows-style absolute paths (`C:\elsewhere\x`,
+`C:/elsewhere/x`, and UNC `\\server\share`) are only recognised as absolute by
+the platform whose convention they follow: Node's path module on a POSIX host
+reads `C:\elsewhere\notes.md` as ordinary relative text and resolves it *beneath*
+the workspace, so a rule that should have denied a write outside the project saw
+the path as inside and said nothing. It is the same shape as every other hole
+here — a value that never got mapped into what the evaluator could see — except
+the surface this time was the host's own idea of "absolute," and the thing that
+found it was our own regression suite run on a platform I do not use. This one is
+closed, not open: absolute paths are now recognised under both conventions on
+every platform, failing closed on anything they cannot place inside the
+workspace, with the three reds green again and the case pinned by tests. I am
+counting it out loud because catching it a day early is not luck to bury — it is
+the argument for running your own attacks, on a machine that is not yours, before
+a stranger does.
+
 ## Try it
 
 Three commands, no API key — enforcement never compiles. Around a minute, almost
