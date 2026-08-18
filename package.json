@@ -1,6 +1,6 @@
 {
   "name": "warrant-mcp",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Write the rules for your AI agent once, in plain English. Deterministic code checks every tool call, and a Claude Code hook blocks the ones your rules forbid.",
   "keywords": [
     "mcp",
@@ -41,7 +41,8 @@
     "LICENSE",
     "README.md",
     "SECURITY-SURFACE.md",
-    "SPEC.md"
+    "SPEC.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
