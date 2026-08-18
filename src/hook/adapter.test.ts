@@ -142,7 +142,12 @@ test('M4 bypass 3 — the PowerShell write family overwrote the protected file',
     'Copy-Item junk-dir/file.txt .env',
     'Clear-Content .env',
     'New-Item -ItemType File -Force .env',
-    '[System.IO.File]::Delete("C:/ws/.env")',
+    // An absolute path to the workspace's OWN .env — built from WS so it is
+    // genuinely inside the workspace on every host. A hard-coded "C:/ws/.env"
+    // only sat inside the workspace on a dev machine whose cwd was the C: drive;
+    // on POSIX and on a D:-drive runner it is outside, and the drive-letter fix
+    // correctly denies it as W1 (outside) before W2 (protected) is even reached.
+    `[System.IO.File]::Delete("${resolve(WS, '.env').split(sep).join('/')}")`,
   ]) {
     denies('PowerShell', { command }, 'W2', command);
   }
@@ -195,6 +200,19 @@ test('M4 — readers and ordinary commands stay quiet: no false denials', () => 
 test('M4 — sed keeps its script out of the path sweep', () => {
   // The s/// script must not be read as a path, or every sed call denies.
   assert.equal(decide('Bash', { command: 'sed -i "s/a/b/" notes.md' }), null);
+});
+
+test('a traversal-shaped MCP tool name cannot hide a mutating verb', () => {
+  // The mutating-verb test reads the segment after the LAST "__", so padding
+  // the name with extra "__"-delimited or traversal-looking segments does not
+  // move a delete/write/move out of view.
+  denies('mcp__..__..__delete_file', { path: '/ws/.env' }, 'W2', 'traversal segments, verb still last');
+  denies('mcp__a__b__c__move', { destination: 'C:\\elsewhere\\x.txt' }, 'W1', 'deep name, move outside');
+  // Mixed-case verbs are normalised, so DELETE and Write are still caught.
+  denies('mcp__fs__DELETE_File', { path: '/ws/.env' }, 'W2', 'upper-case verb');
+  // A genuinely read-shaped name after the last "__" still maps to nothing,
+  // even with a scary-looking prefix — the name is the tool's, not the user's.
+  assert.equal(decide('mcp__delete__read_file', { path: '/ws/.env' }), null);
 });
 
 test('denyHookOutput emits the documented PreToolUse deny shape', () => {
