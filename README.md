@@ -167,6 +167,15 @@ came from stating what a rule means, not from an attack, and adding the two
 figures together would describe a hunt that never happened. Both of the open
 routes are named — here and below — rather than left for you to find.
 
+An eighth was found on **2026-08-18** and is **closed**: Windows-style absolute
+paths (`C:\…`, UNC) were read as relative by a POSIX host and resolved beneath
+the workspace, escaping the containment rules. Our own cross-platform audit
+caught it — the same suite, run on Linux for the first time — and the fix
+landed together with the matrix CI that found it. It is counted apart from the
+others for the same reason the seventh is: it came from a different kind of
+hunt, and the account is in
+[writing/bypass-hunt.md](writing/bypass-hunt.md).
+
 These classes remain open by construction, and are properties of the
 architecture rather than bugs awaiting a patch:
 
