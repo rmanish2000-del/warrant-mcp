@@ -191,3 +191,26 @@ test('the plugin ships the skill and nothing else that auto-loads', () => {
     );
   }
 });
+
+test('the corpus case count in prose matches the corpus', () => {
+  // README.md and spec/README.md both quote a number of conformance checks.
+  // Both said 76 from the commit that created the corpus until 2026-08-19,
+  // while the corpus has held 73 cases the whole time — nothing pinned it, so
+  // nobody could notice. On a project whose positioning is that its author
+  // counts honestly, a miscounted count on the landing page is the expensive
+  // kind of wrong. Adding a case now updates this in the same commit.
+  const corpus = JSON.parse(readFileSync(resolve(PACKAGE_ROOT, 'spec', 'corpus.json'), 'utf8')) as {
+    readonly cases: readonly unknown[];
+  };
+  const actual = corpus.cases.length;
+  for (const doc of ['README.md', resolve('spec', 'README.md')]) {
+    const text = readFileSync(resolve(PACKAGE_ROOT, doc), 'utf8');
+    for (const quoted of text.matchAll(/(\d+)\s+(?:language-agnostic\s+)?checks\b/g)) {
+      assert.equal(
+        Number(quoted[1]),
+        actual,
+        `${doc} says ${quoted[1]} conformance checks; spec/corpus.json holds ${actual}`,
+      );
+    }
+  }
+});

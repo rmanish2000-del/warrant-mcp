@@ -137,7 +137,7 @@ is one client's mechanism, not part of the format.
 **This repository is the reference implementation**, not the definition. Where
 the spec and this code disagree, the spec is what an implementer should trust
 and the disagreement is a bug here. [`spec/corpus.json`](spec/corpus.json) is the
-arbiter — 76 language-agnostic checks, run by this repo's own test suite, so
+arbiter — 73 language-agnostic checks, run by this repo's own test suite, so
 this implementation cannot drift from the document without going red. **A second
 implementation would be welcome**: it is the only real evidence that the spec is
 precise enough to deserve the name, and the corpus is the only referee either
@@ -419,7 +419,7 @@ Requires Node ≥ 22.6. `npx warrant-mcp init` works without installing.
 ## Development
 
 ```bash
-npm test        # 243 tests, including the SPEC.md conformance corpus
+npm test        # 244 tests, including the SPEC.md conformance corpus
 npm run typecheck
 npm run demo    # the canonical checks with verdict banners, fully offline
 ```
