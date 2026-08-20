@@ -25,6 +25,7 @@ const RULE_SET_REFERENCE = resolve(SKILL_DIR, 'references', 'rule-set.md');
 const SPEC = resolve(PACKAGE_ROOT, 'SPEC.md');
 const README = resolve(PACKAGE_ROOT, 'README.md');
 const CLAUDE = resolve(PACKAGE_ROOT, 'CLAUDE.md');
+const TEST_REGISTRATION = /(?<![\w.])test\s*\(/g;
 
 interface RuleVariant {
   readonly required: readonly string[];
@@ -240,14 +241,16 @@ test('the suite test count in prose matches the derived count', () => {
 
   const derived = files.reduce((total, file) => {
     const stripped = stripComments(readFileSync(resolve(PACKAGE_ROOT, file), 'utf8'));
-    const staticRegistrations = [...stripped.matchAll(/\btest\s*\(/g)].length;
+    const staticRegistrations = [...stripped.matchAll(TEST_REGISTRATION)].length;
     if (file !== 'src/spec/conformance.test.ts') return total + staticRegistrations;
 
-    const loopHeaders = [...stripped.matchAll(/for\s*\(\s*const\s+[A-Za-z_$][\w$]*\s+of\s+corpus\.cases\s*\)/g)];
+    const loopHeaders = [...stripped.matchAll(/for\s*\(([\s\S]*?)\)\s*\{/g)].filter((match) =>
+      /\bof\s+corpus\.cases\b/.test(match[1] ?? ''),
+    );
     assert.ok(loopHeaders.length > 0, 'conformance.test.ts should iterate over corpus.cases');
     const registrationsInCorpusLoops = loopHeaders.map((loopHeader) => {
-      const bodyStart = stripped.indexOf('{', (loopHeader.index ?? 0) + loopHeader[0].length);
-      assert.notEqual(bodyStart, -1, 'a corpus.cases loop should open a block');
+      const bodyStart = (loopHeader.index ?? 0) + loopHeader[0].lastIndexOf('{');
+      assert.ok(bodyStart >= 0, 'a corpus.cases loop should open a block');
 
       let depth = 0;
       let bodyEnd = -1;
@@ -261,7 +264,7 @@ test('the suite test count in prose matches the derived count', () => {
         }
       }
       assert.notEqual(bodyEnd, -1, 'a corpus.cases loop should close its block');
-      return [...stripped.slice(bodyStart + 1, bodyEnd).matchAll(/\btest\s*\(/g)].length;
+      return [...stripped.slice(bodyStart + 1, bodyEnd).matchAll(TEST_REGISTRATION)].length;
     });
 
     const templateLoops = registrationsInCorpusLoops.filter((count) => count > 0);
@@ -282,7 +285,7 @@ test('the suite test count in prose matches the derived count', () => {
   // Ignore historical counts near the current-suite prose: the migration
   // labels (`M1` etc.), the retrospective "ending with … tests" sentence, and
   // any future "Suite N" captions in write-ups are not present-tense promises.
-  const HISTORICAL_WINDOW_CHARS = 96;
+  const HISTORICAL_WINDOW_CHARS = 96; // Wide enough for the nearby migration labels and "ending with … tests" prose, not a whole paragraph.
   const historicalWindow = /\bending with\b|\bM\d+\b|\bSuite \d+\b/i;
   for (const file of [README, CLAUDE]) {
     const text = readFileSync(file, 'utf8');
