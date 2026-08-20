@@ -29,7 +29,7 @@ Each of these was run, not reasoned about.
 - **Latency.** The decision is ~0.01ms. The Node process around it measured
   220–430ms median across three runs. `demo/bench.mjs` reproduces it.
 - **The format is specified.** `SPEC.md` 0.1.0 defines the artifact, the
-  matching semantics and the fail-closed rules; `spec/corpus.json` is 76
+  matching semantics and the fail-closed rules; `spec/corpus.json` is 73
   language-agnostic checks that this repo runs against its own engine, so the
   document and the code cannot drift apart silently.
 - **The record and the report.** Fifteen tool calls driven through the real
@@ -37,7 +37,7 @@ Each of these was run, not reasoned about.
   policy versions; `warrant-mcp report` rendered them, and the page made zero
   requests when opened in a browser. A record carrying a planted token made the
   command refuse to write and name only the kind, never the value.
-- **227 tests**, and `npm run typecheck` clean.
+- **`npm test` green**, and `npm run typecheck` clean.
 
 ## Assumed, not verified
 
