@@ -23,6 +23,8 @@ const PACKAGE_ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const SKILL_DIR = resolve(PACKAGE_ROOT, 'skills', 'warrant-policy-author');
 const RULE_SET_REFERENCE = resolve(SKILL_DIR, 'references', 'rule-set.md');
 const SPEC = resolve(PACKAGE_ROOT, 'SPEC.md');
+const README = resolve(PACKAGE_ROOT, 'README.md');
+const CLAUDE = resolve(PACKAGE_ROOT, 'CLAUDE.md');
 
 interface RuleVariant {
   readonly required: readonly string[];
@@ -211,6 +213,56 @@ test('the corpus case count in prose matches the corpus', () => {
         actual,
         `${doc} says ${quoted[1]} conformance checks; spec/corpus.json holds ${actual}`,
       );
+    }
+  }
+});
+
+test('the suite test count in prose matches the derived count', () => {
+  // The npm test comment in README.md and the local operator guidance in
+  // CLAUDE.md are both present-tense promises about the suite size. The count
+  // is derivable from package.json plus the conformance corpus, so letting the
+  // prose float separately is exactly the kind of drift this test file exists
+  // to close.
+  const pkg = JSON.parse(readFileSync(resolve(PACKAGE_ROOT, 'package.json'), 'utf8')) as {
+    scripts?: { test?: string };
+  };
+  const files = pkg.scripts?.test?.match(/\bsrc\/[^\s]+\.test\.ts\b/g) ?? [];
+  assert.ok(files.length > 0, 'package.json script "test" does not enumerate any test files');
+
+  const corpus = JSON.parse(readFileSync(resolve(PACKAGE_ROOT, 'spec', 'corpus.json'), 'utf8')) as {
+    readonly cases: readonly unknown[];
+  };
+
+  const stripComments = (source: string) =>
+    source
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+  const derived = files.reduce((total, file) => {
+    const stripped = stripComments(readFileSync(resolve(PACKAGE_ROOT, file), 'utf8'));
+    const staticRegistrations = [...stripped.matchAll(/\btest\s*\(/g)].length;
+    if (file !== 'src/spec/conformance.test.ts') return total + staticRegistrations;
+
+    const templateMatches = [...stripped.matchAll(/for\s*\(\s*const\s+[^)]+\s+of\s+corpus\.cases\s*\)\s*\{\s*test\s*\(/g)].length;
+    assert.equal(
+      templateMatches,
+      1,
+      'conformance.test.ts should register exactly one template test inside `for (const … of corpus.cases)`',
+    );
+    return total + staticRegistrations - templateMatches + corpus.cases.length;
+  }, 0);
+
+  const historicalWindow = /\bending with\b|\bM\d+\b|\bSuite \d+\b/i;
+  for (const file of [README, CLAUDE]) {
+    const text = readFileSync(file, 'utf8');
+    const presentCounts = [...text.matchAll(/\b(\d+)\s+tests\b/g)].filter((match) => {
+      const start = Math.max(0, (match.index ?? 0) - 48);
+      const end = Math.min(text.length, (match.index ?? 0) + match[0].length + 48);
+      return !historicalWindow.test(text.slice(start, end));
+    });
+    assert.ok(presentCounts.length > 0, `${file} does not contain a present-tense suite count`);
+    for (const match of presentCounts) {
+      assert.equal(Number(match[1]), derived, `${file} says ${match[1]} tests; the derived suite count is ${derived}`);
     }
   }
 });

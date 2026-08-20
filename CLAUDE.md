@@ -204,7 +204,7 @@ recalling.
   The visual identity is the **Prava family** carried over from the `warrant`
   console (warm paper, teal accent, Inter + IBM Plex Mono) — named locally,
   never loaded from a font CDN, because self-contained wins over exact type.
-- `npm test` — full suite (currently **244 tests**). New test files must be
+- `npm test` — full suite (currently **252 tests**). New test files must be
   added to the script's explicit list; discovery is deliberate, not globbed.
 - `npm run typecheck` — `tsc --noEmit`, strict.
 - `npm run policy:review` / `policy:accept` / `policy:test -- "<action>"` —

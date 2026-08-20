@@ -419,7 +419,7 @@ Requires Node ≥ 22.6. `npx warrant-mcp init` works without installing.
 ## Development
 
 ```bash
-npm test        # 244 tests, including the SPEC.md conformance corpus
+npm test        # 252 tests, including the SPEC.md conformance corpus
 npm run typecheck
 npm run demo    # the canonical checks with verdict banners, fully offline
 ```
