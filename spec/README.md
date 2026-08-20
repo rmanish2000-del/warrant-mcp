@@ -64,7 +64,7 @@ macOS and Windows too. Shell matching is separately and always case-insensitive
 
 ## Coverage
 
-76 checks: every rule type, both verdicts, the invalid-action path, clause
+73 checks: every rule type, both verdicts, the invalid-action path, clause
 precedence, and the boundary cases that a naive implementation gets wrong —
 name-prefix directories, non-contiguous token sequences, substring versus
 whole-token matching, suffixes that are not extensions, and the documented
