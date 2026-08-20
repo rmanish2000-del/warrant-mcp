@@ -249,7 +249,7 @@ test('the suite test count in prose matches the derived count', () => {
     );
     assert.ok(loopHeaders.length > 0, 'conformance.test.ts should iterate over corpus.cases');
     const registrationsInCorpusLoops = loopHeaders.map((loopHeader) => {
-      const bodyStart = (loopHeader.index ?? 0) + loopHeader[0].lastIndexOf('{');
+      const bodyStart = (loopHeader.index ?? 0) + loopHeader[0].length - 1;
       assert.ok(bodyStart >= 0, 'a corpus.cases loop should open a block');
 
       let depth = 0;
