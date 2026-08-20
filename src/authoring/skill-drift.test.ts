@@ -15,7 +15,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { POLICY_JSON_SCHEMA } from '../compiler/schema.ts';
 
@@ -192,25 +192,86 @@ test('the plugin ships the skill and nothing else that auto-loads', () => {
   }
 });
 
-test('the corpus case count in prose matches the corpus', () => {
-  // README.md and spec/README.md both quote a number of conformance checks.
-  // Both said 76 from the commit that created the corpus until 2026-08-19,
-  // while the corpus has held 73 cases the whole time — nothing pinned it, so
-  // nobody could notice. On a project whose positioning is that its author
-  // counts honestly, a miscounted count on the landing page is the expensive
-  // kind of wrong. Adding a case now updates this in the same commit.
-  const corpus = JSON.parse(readFileSync(resolve(PACKAGE_ROOT, 'spec', 'corpus.json'), 'utf8')) as {
-    readonly cases: readonly unknown[];
-  };
+/*
+ * COUNT DRIFT — the guard for a class, not for the two instances that exposed it.
+ *
+ * A number written in prose is a report about an artefact. Twice now the report
+ * was believed and the artefact was never read: README and spec/README.md said
+ * the conformance corpus holds 76 checks from the commit that created it, and it
+ * has always held 73; STATE.md said 227 tests while the suite stood at 244.
+ * Nothing failed, because nothing compared the sentence to the thing.
+ *
+ * Two kinds of count live in these documents and they need opposite treatment.
+ *
+ *   PINNED — a count with a cheap, exact source of truth in the repository.
+ *   The corpus size and the compiled policy's clause and rule totals are read
+ *   from the artefacts themselves below, never from a second constant here: a
+ *   guard that needs hand-updating is the same defect wearing a test's clothes.
+ *
+ *   FORBIDDEN — the suite's own test total. Its only honest source of truth is
+ *   running the suite, which this test is inside of, so any derivation would be
+ *   a model of the runner rather than a measurement. A number that cannot be
+ *   checked should not be asserted, so the documents now point at `npm test`
+ *   instead of quoting it, and this guard fails if a quoted total comes back.
+ *   That is also what makes the guard indifferent to merge order: a PR that adds
+ *   tests cannot invalidate a sentence that no longer states a total.
+ *
+ * Historical counts are deliberately untouched and must stay readable: README's
+ * "M1 through M7, ending with 77 tests", SECURITY-SURFACE's "it is **77** as of
+ * M7 — `npm test` is the current figure, and this line is not", and every
+ * CHANGELOG entry. Those describe a moment on purpose. The patterns below match
+ * the live phrasings only, and CHANGELOG.md is excluded outright, because a
+ * changelog that updated itself would stop being a record.
+ */
+
+const PROSE_DOCS = ['README.md', 'CLAUDE.md', 'STATE.md', join('spec', 'README.md')];
+
+const readDoc = (relative: string): string =>
+  readFileSync(resolve(PACKAGE_ROOT, relative), 'utf8');
+
+test('a prose count of the conformance corpus matches the corpus itself', () => {
+  const corpus = JSON.parse(readDoc(join('spec', 'corpus.json'))) as { readonly cases: readonly unknown[] };
   const actual = corpus.cases.length;
-  for (const doc of ['README.md', resolve('spec', 'README.md')]) {
-    const text = readFileSync(resolve(PACKAGE_ROOT, doc), 'utf8');
-    for (const quoted of text.matchAll(/(\d+)\s+(?:language-agnostic\s+)?checks\b/g)) {
+  let asserted = 0;
+  for (const doc of PROSE_DOCS) {
+    for (const quoted of readDoc(doc).matchAll(/(\d+)\s+(?:language-agnostic\s+)?checks\b/g)) {
+      asserted += 1;
       assert.equal(
         Number(quoted[1]),
         actual,
         `${doc} says ${quoted[1]} conformance checks; spec/corpus.json holds ${actual}`,
       );
+    }
+  }
+  assert.ok(asserted > 0, 'no document states the corpus size any more — if that was deliberate, delete this test rather than leaving it green over nothing');
+});
+
+test('a prose count of the compiled policy matches the compiled policy', () => {
+  const cache = JSON.parse(readDoc('policy-compiled.json')) as {
+    readonly compiled: { readonly clauses: readonly unknown[]; readonly rules: readonly unknown[] };
+  };
+  const clauses = cache.compiled.clauses.length;
+  const rules = cache.compiled.rules.length;
+  for (const doc of PROSE_DOCS) {
+    for (const quoted of readDoc(doc).matchAll(/(\d+)\s+clauses?,\s*(\d+)\s+rules?\b/g)) {
+      assert.equal(Number(quoted[1]), clauses, `${doc} says ${quoted[1]} clauses; policy-compiled.json has ${clauses}`);
+      assert.equal(Number(quoted[2]), rules, `${doc} says ${quoted[2]} rules; policy-compiled.json has ${rules}`);
+    }
+  }
+});
+
+test('no document quotes a suite test total, because nothing can check one', () => {
+  // Matches the live phrasings that stated a total — "**244 tests**" and the
+  // "# 244 tests" comment in the quickstart block. It does not match the
+  // historical sentences, which say "ending with 77 tests" and "**77** as of
+  // M7", and CHANGELOG.md is not in PROSE_DOCS at all.
+  for (const doc of PROSE_DOCS) {
+    for (const pattern of [/\*\*(\d+)\s+tests\*\*/g, /#\s*(\d+)\s+tests\b/g]) {
+      for (const quoted of readDoc(doc).matchAll(pattern)) {
+        assert.fail(
+          `${doc} quotes a suite total of ${quoted[1]} tests. That number goes stale on the next commit that adds a test and nothing can verify it — point at \`npm test\`, which prints its own total, instead.`,
+        );
+      }
     }
   }
 });
