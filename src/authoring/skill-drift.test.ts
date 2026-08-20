@@ -243,26 +243,52 @@ test('the suite test count in prose matches the derived count', () => {
     const staticRegistrations = [...stripped.matchAll(/\btest\s*\(/g)].length;
     if (file !== 'src/spec/conformance.test.ts') return total + staticRegistrations;
 
-    const templateMatches = [
-      ...stripped.matchAll(/for\s*\(\s*const\b[\s\S]*?\bof\s+corpus\.cases\s*\)\s*\{[\s\S]*?\btest\s*\(/g),
-    ].length;
+    const loopHeaders = [...stripped.matchAll(/for\s*\(\s*const\s+[A-Za-z_$][\w$]*\s+of\s+corpus\.cases\s*\)/g)];
+    assert.ok(loopHeaders.length > 0, 'conformance.test.ts should iterate over corpus.cases');
+    const registrationsInCorpusLoops = loopHeaders.map((loopHeader) => {
+      const bodyStart = stripped.indexOf('{', (loopHeader.index ?? 0) + loopHeader[0].length);
+      assert.notEqual(bodyStart, -1, 'a corpus.cases loop should open a block');
+
+      let depth = 0;
+      let bodyEnd = -1;
+      for (let i = bodyStart; i < stripped.length; i += 1) {
+        const char = stripped[i];
+        if (char === '{') depth += 1;
+        if (char === '}') depth -= 1;
+        if (depth === 0) {
+          bodyEnd = i;
+          break;
+        }
+      }
+      assert.notEqual(bodyEnd, -1, 'a corpus.cases loop should close its block');
+      return [...stripped.slice(bodyStart + 1, bodyEnd).matchAll(/\btest\s*\(/g)].length;
+    });
+
+    const templateLoops = registrationsInCorpusLoops.filter((count) => count > 0);
     assert.equal(
-      templateMatches,
+      templateLoops.length,
+      1,
+      'conformance.test.ts should have exactly one corpus.cases loop that registers template tests',
+    );
+    const templateRegistrations = templateLoops[0] ?? assert.fail('the conformance template loop should exist');
+    assert.equal(
+      templateRegistrations,
       1,
       'conformance.test.ts should register exactly one template test inside `for (const … of corpus.cases)`',
     );
-    return total + staticRegistrations - templateMatches + corpus.cases.length;
+    return total + staticRegistrations - templateRegistrations + corpus.cases.length;
   }, 0);
 
   // Ignore historical counts near the current-suite prose: the migration
   // labels (`M1` etc.), the retrospective "ending with … tests" sentence, and
   // any future "Suite N" captions in write-ups are not present-tense promises.
+  const HISTORICAL_WINDOW_CHARS = 96;
   const historicalWindow = /\bending with\b|\bM\d+\b|\bSuite \d+\b/i;
   for (const file of [README, CLAUDE]) {
     const text = readFileSync(file, 'utf8');
     const presentCounts = [...text.matchAll(/\b(\d+)\s+tests\b/g)].filter((match) => {
-      const start = Math.max(0, (match.index ?? 0) - 48);
-      const end = Math.min(text.length, (match.index ?? 0) + match[0].length + 48);
+      const start = Math.max(0, (match.index ?? 0) - HISTORICAL_WINDOW_CHARS);
+      const end = Math.min(text.length, (match.index ?? 0) + match[0].length + HISTORICAL_WINDOW_CHARS);
       return !historicalWindow.test(text.slice(start, end));
     });
     assert.ok(presentCounts.length > 0, `${file} does not contain a present-tense suite count`);
