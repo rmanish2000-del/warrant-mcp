@@ -215,6 +215,77 @@ test('a traversal-shaped MCP tool name cannot hide a mutating verb', () => {
   assert.equal(decide('mcp__delete__read_file', { path: '/ws/.env' }), null);
 });
 
+test('every native file-writing tool maps its documented target field and fails closed without it', () => {
+  for (const [toolName, field] of [
+    ['Write', 'file_path'],
+    ['Edit', 'file_path'],
+    ['MultiEdit', 'file_path'],
+    ['NotebookEdit', 'notebook_path'],
+  ] as const) {
+    denies(toolName, { [field]: '/ws/.env' }, 'W2', `${toolName} protected target`);
+    const missing = decide(toolName, {});
+    assert.ok(missing, `${toolName}: a missing target must not become no opinion`);
+    assert.equal(missing.verdict.reason, 'INVALID_ACTION', toolName);
+  }
+});
+
+test('every supported MCP target-field spelling stays inside the mutation check', () => {
+  for (const field of [
+    'path',
+    'file_path',
+    'filePath',
+    'filename',
+    'fileName',
+    'file',
+    'target',
+    'destination',
+    'notebook_path',
+  ]) {
+    denies('mcp__filesystem__write_file', { [field]: '/ws/.env' }, 'W2', field);
+  }
+});
+
+test('a mutating MCP tool with an unknown target schema is an explicit unmapped bypass surface', () => {
+  // Characterisation only: the adapter cannot infer arbitrary third-party
+  // schemas. Keep this visible until the action model or client contract
+  // supplies a structural target field.
+  assert.deepEqual(
+    mapToolCall('mcp__filesystem__write_file', { resource_uri: 'file:///ws/.env' }),
+    [],
+  );
+});
+
+test('writer aliases, executable suffixes, compact separators and duplicate targets stay swept', () => {
+  for (const command of [
+    'rimraf .env',
+    'Remove-Item.ps1 .env',
+    'copy-item .env backup.env',
+    'touch .env',
+    'cmd.exe /c del .env',
+    'echo ok&&rm .env',
+  ]) {
+    denies('Bash', { command }, 'W2', command);
+  }
+  const duplicate = mapToolCall('Bash', { command: 'rm .env && rm ".env"' });
+  assert.equal(
+    duplicate.filter((check) => check.display.path === '.env').length,
+    1,
+    'the same destructive target should be evaluated once',
+  );
+});
+
+test('null redirects and malformed boundary inputs do not create false file targets', () => {
+  for (const command of ['echo x > /dev/null', 'echo x > NUL', 'echo x > $null']) {
+    assert.equal(decide('Bash', { command }), null, command);
+  }
+  const missingCommand = decide('Bash', {});
+  assert.ok(missingCommand);
+  assert.equal(missingCommand.verdict.reason, 'INVALID_ACTION');
+  const missingUrl = decide('WebFetch', {});
+  assert.ok(missingUrl);
+  assert.equal(missingUrl.verdict.reason, 'INVALID_ACTION');
+});
+
 test('denyHookOutput emits the documented PreToolUse deny shape', () => {
   assert.deepEqual(denyHookOutput('because'), {
     hookSpecificOutput: {
