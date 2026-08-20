@@ -243,7 +243,9 @@ test('the suite test count in prose matches the derived count', () => {
     const staticRegistrations = [...stripped.matchAll(/\btest\s*\(/g)].length;
     if (file !== 'src/spec/conformance.test.ts') return total + staticRegistrations;
 
-    const templateMatches = [...stripped.matchAll(/for\s*\(\s*const\s+[^)]+\s+of\s+corpus\.cases\s*\)\s*\{\s*test\s*\(/g)].length;
+    const templateMatches = [
+      ...stripped.matchAll(/for\s*\(\s*const\b[\s\S]*?\bof\s+corpus\.cases\s*\)\s*\{[\s\S]*?\btest\s*\(/g),
+    ].length;
     assert.equal(
       templateMatches,
       1,
@@ -252,6 +254,9 @@ test('the suite test count in prose matches the derived count', () => {
     return total + staticRegistrations - templateMatches + corpus.cases.length;
   }, 0);
 
+  // Ignore historical counts near the current-suite prose: the migration
+  // labels (`M1` etc.), the retrospective "ending with … tests" sentence, and
+  // any future "Suite N" captions in write-ups are not present-tense promises.
   const historicalWindow = /\bending with\b|\bM\d+\b|\bSuite \d+\b/i;
   for (const file of [README, CLAUDE]) {
     const text = readFileSync(file, 'utf8');
