@@ -290,7 +290,7 @@ test('the suite test count in prose matches the derived count', () => {
       1,
       'conformance.test.ts should have exactly one corpus.cases loop that registers template tests',
     );
-    const templateRegistrations = templateLoops[0] ?? assert.fail('the conformance template loop should exist');
+    const templateRegistrations = templateLoops[0]!;
     assert.equal(
       templateRegistrations,
       1,
