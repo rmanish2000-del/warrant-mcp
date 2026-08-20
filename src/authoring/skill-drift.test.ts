@@ -238,36 +238,53 @@ test('the suite test count in prose matches the derived count', () => {
     source
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const findBalanced = (source: string, start: number, open: string, close: string) => {
+    let depth = 0;
+    for (let i = start; i < source.length; i += 1) {
+      const char = source[i];
+      if (char === open) depth += 1;
+      if (char === close) depth -= 1;
+      if (depth === 0) return i;
+    }
+    return -1;
+  };
+  const corpusLoopBodies = (source: string) => {
+    const bodies: string[] = [];
+    for (let i = 0; i < source.length; i += 1) {
+      if (source.slice(i, i + 3) !== 'for' || /\w/.test(source[i - 1] ?? '') || /\w/.test(source[i + 3] ?? '')) continue;
+
+      let cursor = i + 3;
+      while (/\s/.test(source[cursor] ?? '')) cursor += 1;
+      if (source[cursor] !== '(') continue;
+
+      const headerEnd = findBalanced(source, cursor, '(', ')');
+      assert.notEqual(headerEnd, -1, 'a for-loop header should close');
+      const header = source.slice(cursor + 1, headerEnd);
+      if (!/\bof\s+corpus\.cases\b/.test(header)) {
+        i = headerEnd;
+        continue;
+      }
+
+      cursor = headerEnd + 1;
+      while (/\s/.test(source[cursor] ?? '')) cursor += 1;
+      assert.equal(source[cursor], '{', 'a corpus.cases loop should open a block');
+
+      const bodyEnd = findBalanced(source, cursor, '{', '}');
+      assert.notEqual(bodyEnd, -1, 'a corpus.cases loop should close its block');
+      bodies.push(source.slice(cursor + 1, bodyEnd));
+      i = bodyEnd;
+    }
+    return bodies;
+  };
 
   const derived = files.reduce((total, file) => {
     const stripped = stripComments(readFileSync(resolve(PACKAGE_ROOT, file), 'utf8'));
     const staticRegistrations = [...stripped.matchAll(TEST_REGISTRATION)].length;
     if (file !== 'src/spec/conformance.test.ts') return total + staticRegistrations;
 
-    const loopHeaders = [...stripped.matchAll(/for\s*\(([\s\S]*?)\)\s*\{/g)].filter((match) =>
-      /\bof\s+corpus\.cases\b/.test(match[1] ?? ''),
-    );
-    assert.ok(loopHeaders.length > 0, 'conformance.test.ts should iterate over corpus.cases');
-    const registrationsInCorpusLoops = loopHeaders.map((loopHeader) => {
-      const bodyStart = (loopHeader.index ?? 0) + loopHeader[0].length - 1;
-      assert.ok(bodyStart >= 0, 'a corpus.cases loop should open a block');
-
-      let depth = 0;
-      let bodyEnd = -1;
-      for (let i = bodyStart; i < stripped.length; i += 1) {
-        const char = stripped[i];
-        if (char === '{') depth += 1;
-        if (char === '}') depth -= 1;
-        if (depth === 0) {
-          bodyEnd = i;
-          break;
-        }
-      }
-      assert.notEqual(bodyEnd, -1, 'a corpus.cases loop should close its block');
-      return [...stripped.slice(bodyStart + 1, bodyEnd).matchAll(TEST_REGISTRATION)].length;
-    });
-
-    const templateLoops = registrationsInCorpusLoops.filter((count) => count > 0);
+    const templateLoops = corpusLoopBodies(stripped)
+      .map((body) => [...body.matchAll(TEST_REGISTRATION)].length)
+      .filter((count) => count > 0);
     assert.equal(
       templateLoops.length,
       1,
@@ -285,14 +302,15 @@ test('the suite test count in prose matches the derived count', () => {
   // Ignore historical counts near the current-suite prose: the migration
   // labels (`M1` etc.), the retrospective "ending with … tests" sentence, and
   // any future "Suite N" captions in write-ups are not present-tense promises.
-  const HISTORICAL_WINDOW_CHARS = 96; // Wide enough for the nearby migration labels and "ending with … tests" prose, not a whole paragraph.
   const historicalWindow = /\bending with\b|\bM\d+\b|\bSuite \d+\b/i;
   for (const file of [README, CLAUDE]) {
     const text = readFileSync(file, 'utf8');
     const presentCounts = [...text.matchAll(/\b(\d+)\s+tests\b/g)].filter((match) => {
-      const start = Math.max(0, (match.index ?? 0) - HISTORICAL_WINDOW_CHARS);
-      const end = Math.min(text.length, (match.index ?? 0) + match[0].length + HISTORICAL_WINDOW_CHARS);
-      return !historicalWindow.test(text.slice(start, end));
+      const index = match.index ?? 0;
+      const lineStart = text.lastIndexOf('\n', index) + 1;
+      const lineEnd = text.indexOf('\n', index);
+      const line = text.slice(lineStart, lineEnd === -1 ? text.length : lineEnd);
+      return !historicalWindow.test(line);
     });
     assert.ok(presentCounts.length > 0, `${file} does not contain a present-tense suite count`);
     for (const match of presentCounts) {
