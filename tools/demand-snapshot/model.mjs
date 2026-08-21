@@ -23,8 +23,12 @@
  * and an observed absence are different facts and are recorded differently.
  */
 
-/** Bumped when the record's shape changes, so later passes can tell shapes apart. */
-export const SCHEMA_VERSION = 1;
+/**
+ * Bumped when the record shape changes, so later passes can tell shapes apart.
+ * v2: `launch` became a list of recorded surfaces rather than a single link, and
+ * a NOT FOUND launch now carries the scope searched.
+ */
+export const SCHEMA_VERSION = 2;
 
 /**
  * A field the provider would not give us: the question is open, not answered.
@@ -162,6 +166,54 @@ export function parseOwnerTraffic(payload) {
 }
 
 /**
+ * Launch records — the event that starts the counting window.
+ *
+ * This exists because the fleet spent two days reasoning about a launch that had
+ * not happened: "launched" was carried as an inferred state rather than as an
+ * event with a link and a timestamp, and nothing could be checked against it.
+ * The runner used to hard-code the absence, which would have frozen that
+ * absence into every future snapshot. Records are now input.
+ *
+ * Zero records is a legitimate answer and stays explicit: NOT FOUND, carrying
+ * the scope that was searched, so a later reader can tell "we looked there and
+ * found nothing" from "nobody looked". Surfaces are kept apart and never pooled
+ * — a null result on a narrow, well-targeted audience means something a null
+ * result on a broad one does not.
+ */
+export function parseLaunchRecords(records, searched) {
+  if (records === null || records === undefined) {
+    return { status: NOT_FOUND, searched: searched ?? [], surfaces: [] };
+  }
+  if (!Array.isArray(records)) refuse('launch records', 'not an array');
+  if (records.length === 0) {
+    return { status: NOT_FOUND, searched: searched ?? [], surfaces: [] };
+  }
+  const seen = new Set();
+  const surfaces = records.map((record) => {
+    if (record === null || typeof record !== 'object') refuse('launch record', 'not an object');
+    const { surface, url, postedAt } = record;
+    if (typeof surface !== 'string' || surface.trim() === '') refuse('launch record', 'surface missing');
+    if (seen.has(surface)) refuse('launch record', `duplicate surface ${surface}`);
+    seen.add(surface);
+    if (typeof url !== 'string') refuse('launch record', `url missing for ${surface}`);
+    let parsed;
+    try {
+      parsed = new URL(url);
+    } catch {
+      refuse('launch record', `unparseable url for ${surface}: ${url}`);
+    }
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      refuse('launch record', `url for ${surface} is not http(s)`);
+    }
+    // Throws on a malformed timestamp, which is the point: a fabricated or
+    // unreadable time would silently move the window this record starts.
+    const at = utcDay(postedAt);
+    return { surface, url, postedAt, postedDayUtc: at };
+  });
+  return { status: 'RECORDED', searched: searched ?? [], surfaces };
+}
+
+/**
  * Assemble the versioned record. `observedAt` and every provider timestamp are
  * passed in, so the same inputs always produce the same record.
  */
@@ -175,7 +227,8 @@ export function buildSnapshot(input) {
     npmProviderNote,
     gitHubPayload,
     ownerTrafficPayload,
-    launchLink,
+    launchRecords,
+    launchSearched,
   } = input;
 
   const publishDayUtc = utcDay(publishedAt);
@@ -185,7 +238,7 @@ export function buildSnapshot(input) {
     schemaVersion: SCHEMA_VERSION,
     observedAt,
     subject: { packageName, version, publishedAt, publishDayUtc },
-    launch: launchLink ?? { status: NOT_FOUND, searched: [], note: 'no launch link recorded' },
+    launch: parseLaunchRecords(launchRecords, launchSearched),
     npm: {
       measures: DOWNLOADS_DISCLAIMER,
       provider: 'api.npmjs.org/downloads/range',
@@ -205,6 +258,18 @@ export function buildSnapshot(input) {
       discussionsCount: UNOBSERVABLE,
     },
   };
+}
+
+/** Surfaces listed one per line and never pooled into a single figure. */
+function renderLaunch(launch) {
+  if (launch.status === NOT_FOUND) {
+    const where = launch.searched.length > 0 ? ` (searched: ${launch.searched.join(', ')})` : '';
+    return `${NOT_FOUND}${where}`;
+  }
+  const lines = launch.surfaces.map(
+    (s) => `    ${s.surface}  ${s.postedAt}  ${s.url}`,
+  );
+  return [`${launch.surfaces.length} surface(s), reported apart`, ...lines].join('\n');
 }
 
 const show = (value) => (typeof value === 'number' ? String(value) : value);
@@ -227,7 +292,7 @@ export function renderSnapshot(snapshot) {
 
 Schema v${snapshot.schemaVersion} · observed ${snapshot.observedAt}
 Subject: ${snapshot.subject.packageName}@${snapshot.subject.version}, published ${snapshot.subject.publishedAt} (UTC day ${snapshot.subject.publishDayUtc})
-Launch link: ${snapshot.launch.status ?? snapshot.launch.url ?? NOT_FOUND}
+Launch: ${renderLaunch(snapshot.launch)}
 
 ## npm — ${snapshot.npm.measures}
 

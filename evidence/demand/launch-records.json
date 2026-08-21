@@ -1,0 +1,20 @@
+{
+  "id": "launch-records-v1",
+  "note": "Append-only. One entry per surface the project was actually announced on, each with a link and a timestamp. The counting window starts at a surface's postedAt. Surfaces are read apart and never pooled: a null result on a narrow, well-targeted audience means something a null result on a broad one does not. Sources: AGENT-REPORTS/LAUNCH-RECORD-warrant-mcp.md and LAUNCH-RECORD-warrant-mcp-REDDIT.md, both recorded from the founder directly on 2026-08-21.",
+  "records": [
+    {
+      "surface": "hacker-news",
+      "url": "https://news.ycombinator.com/item?id=49383441",
+      "postedAt": "2026-08-21T04:05:00.000Z",
+      "timestampGrade": "REPORTED — recorded as 2026-08-21 morning IST; the minute is not in the record, so this is the reported morning window and not an observed post time",
+      "note": "Text post. HN rejected the GitHub URL field ('your account isn't able to submit this site') — a domain rate-limit, not an account ban — so the link sits in the body."
+    },
+    {
+      "surface": "reddit-r-mcp",
+      "url": "https://www.reddit.com/r/mcp/comments/1vu57xq/i_built_a_permission_layer_for_mcp_agents_then/",
+      "postedAt": "2026-08-21T04:15:00.000Z",
+      "timestampGrade": "REPORTED — 'within about ten minutes' of the HN post per the launch record; the minute is not in the record",
+      "note": "Narrower, better-targeted audience than HN. Nearly filed in r/AskNetsec, where rule 1 and rule 7 would have had it removed by a mod — a mechanical obstacle that would have read like a verdict."
+    }
+  ]
+}

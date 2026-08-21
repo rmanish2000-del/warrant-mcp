@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 2,
+  "observedAt": "2026-08-21T05:19:21.757Z",
+  "subject": {
+    "packageName": "warrant-mcp",
+    "version": "0.2.6",
+    "publishedAt": "2026-08-18T23:44:51.480Z",
+    "publishDayUtc": "2026-08-18"
+  },
+  "launch": {
+    "status": "RECORDED",
+    "searched": [
+      "news.ycombinator.com",
+      "reddit.com/r/mcp",
+      "AGENT-REPORTS launch records"
+    ],
+    "surfaces": [
+      {
+        "surface": "hacker-news",
+        "url": "https://news.ycombinator.com/item?id=49383441",
+        "postedAt": "2026-08-21T04:05:00.000Z",
+        "postedDayUtc": "2026-08-21"
+      },
+      {
+        "surface": "reddit-r-mcp",
+        "url": "https://www.reddit.com/r/mcp/comments/1vu57xq/i_built_a_permission_layer_for_mcp_agents_then/",
+        "postedAt": "2026-08-21T04:15:00.000Z",
+        "postedDayUtc": "2026-08-21"
+      }
+    ]
+  },
+  "npm": {
+    "measures": "downloads only — not users, customers, intent, conversion or revenue",
+    "provider": "api.npmjs.org/downloads/range",
+    "providerNote": "range 2026-08-11..2026-08-21",
+    "windows": {
+      "prePublish": [
+        {
+          "day": "2026-08-11",
+          "downloads": 16
+        },
+        {
+          "day": "2026-08-12",
+          "downloads": 6
+        },
+        {
+          "day": "2026-08-13",
+          "downloads": 3
+        },
+        {
+          "day": "2026-08-14",
+          "downloads": 0
+        },
+        {
+          "day": "2026-08-15",
+          "downloads": 10
+        },
+        {
+          "day": "2026-08-16",
+          "downloads": 0
+        },
+        {
+          "day": "2026-08-17",
+          "downloads": 272
+        }
+      ],
+      "publishDay": [
+        {
+          "day": "2026-08-18",
+          "downloads": 134
+        }
+      ],
+      "postPublish": [
+        {
+          "day": "2026-08-19",
+          "downloads": 56
+        },
+        {
+          "day": "2026-08-20",
+          "downloads": 0
+        },
+        {
+          "day": "2026-08-21",
+          "downloads": 0
+        }
+      ]
+    },
+    "totals": {
+      "prePublish": 307,
+      "publishDay": 134,
+      "postPublish": 56
+    },
+    "combinedTotal": "DELIBERATELY NOT COMPUTED — the three windows describe different things"
+  },
+  "github": {
+    "provider": "api.github.com/repos",
+    "public": {
+      "stars": 1,
+      "forks": 0,
+      "watchers": 0,
+      "openIssuesIncludingPullRequests": 2,
+      "hasDiscussions": false,
+      "pushedAt": "2026-08-21T03:32:58Z"
+    },
+    "ownerTraffic": {
+      "available": false,
+      "reason": "no owner credential supplied to this run",
+      "views": "UNOBSERVABLE",
+      "uniques": "UNOBSERVABLE"
+    },
+    "discussionsCount": "UNOBSERVABLE"
+  }
+}

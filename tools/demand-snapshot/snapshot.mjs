@@ -18,12 +18,17 @@
  * recorded UNOBSERVABLE, which is the honest answer rather than a gap.
  *
  * Usage:
- *   node tools/demand-snapshot/snapshot.mjs --out <dir> [--days 30]
+ *   node tools/demand-snapshot/snapshot.mjs --out <dir> [--days 30] [--launch <file.json>]
+ *
+ * ON LAUNCH RECORDS. The runner used to hard-code the absence of a launch, which
+ * would have frozen a pre-launch fact into every later snapshot. Launch records
+ * are input now: --launch names a file of zero or more {surface, url, postedAt}
+ * entries. With none, the record says NOT FOUND and lists what was searched.
  */
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
-import { NOT_FOUND, buildSnapshot, renderSnapshot } from './model.mjs';
+import { buildSnapshot, renderSnapshot } from './model.mjs';
 
 const PACKAGE = 'warrant-mcp';
 const REPO = 'rmanish2000-del/warrant-mcp';
@@ -65,6 +70,23 @@ if (!Number.isInteger(days) || days < 1) {
   process.exit(2);
 }
 
+// Zero or more launch records, supplied by the caller. A file that cannot be
+// read or parsed stops the run: a fabricated or missing event would silently
+// move the window every later reading is measured against.
+const launchFile = arg('launch', null);
+let launchRecords = null;
+if (launchFile !== null) {
+  try {
+    const parsed = JSON.parse(readFileSync(launchFile, 'utf8'));
+    launchRecords = Array.isArray(parsed) ? parsed : parsed.records;
+    if (!Array.isArray(launchRecords)) throw new Error('no records array');
+  } catch (cause) {
+    process.stderr.write(`FAILED: cannot read launch records from ${launchFile} — ${cause.message}
+`);
+    process.exit(1);
+  }
+}
+
 const observedAt = new Date().toISOString();
 const end = observedAt.slice(0, 10);
 const start = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
@@ -99,11 +121,8 @@ try {
     npmProviderNote: `range ${start}..${end}`,
     gitHubPayload,
     ownerTrafficPayload,
-    launchLink: {
-      status: NOT_FOUND,
-      searched: ['news.ycombinator.com', 'AGENT-REPORTS titles'],
-      note: 'no launch link on record; window is anchored to the 0.2.6 publish instead',
-    },
+    launchRecords,
+    launchSearched: ['news.ycombinator.com', 'reddit.com/r/mcp', 'AGENT-REPORTS launch records'],
   });
   rendered = renderSnapshot(snapshot);
 } catch (cause) {
@@ -112,7 +131,10 @@ try {
 }
 
 mkdirSync(outDir, { recursive: true });
-const stamp = observedAt.slice(0, 10);
+// Minute-level identity: a snapshot is one observation, not one per calendar
+// day. Date-only names made a second run collide with the first, and the first
+// exercise of this tool destroyed a good artefact that way.
+const stamp = `${observedAt.slice(0, 10)}T${observedAt.slice(11, 13)}${observedAt.slice(14, 16)}Z`;
 const jsonPath = join(outDir, `${stamp}_demand-snapshot.json`);
 const mdPath = join(outDir, `${stamp}_demand-snapshot.md`);
 

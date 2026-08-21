@@ -15,6 +15,7 @@ import {
   parseGitHubRepo,
   parseNpmRange,
   parseOwnerTraffic,
+  parseLaunchRecords,
   renderSnapshot,
   separateWindows,
   utcDay,
@@ -41,7 +42,8 @@ const BASE = {
   npmProviderNote: null,
   gitHubPayload: { stargazers_count: 1, forks_count: 0, subscribers_count: 1, open_issues_count: 1, has_discussions: false, pushed_at: '2026-08-20T04:06:10Z' },
   ownerTrafficPayload: null,
-  launchLink: { status: NOT_FOUND, searched: ['news.ycombinator.com'], note: 'no launch link recorded' },
+  launchRecords: null,
+  launchSearched: ['news.ycombinator.com'],
 };
 
 test('npm range parses into day-keyed counts', () => {
@@ -116,10 +118,52 @@ test('absent GitHub fields become UNOBSERVABLE rather than defaults', () => {
   assert.equal(snapshot.github.public, UNOBSERVABLE);
 });
 
-test('a missing launch link is NOT FOUND with the places searched, not silence', () => {
+const HN = { surface: 'hacker-news', url: 'https://news.ycombinator.com/item?id=49383441', postedAt: '2026-08-21T04:05:00.000Z' };
+const REDDIT = { surface: 'reddit-r-mcp', url: 'https://www.reddit.com/r/mcp/comments/1vu57xq/x/', postedAt: '2026-08-21T04:15:00.000Z' };
+
+test('no launch record is NOT FOUND with the places searched, not silence', () => {
   const snapshot = buildSnapshot(BASE);
   assert.equal(snapshot.launch.status, NOT_FOUND);
   assert.deepEqual(snapshot.launch.searched, ['news.ycombinator.com']);
+  assert.deepEqual(snapshot.launch.surfaces, []);
+  // an empty list is the same answer as no list: looked, found nothing
+  assert.equal(parseLaunchRecords([], ['x']).status, NOT_FOUND);
+});
+
+test('one launch surface is recorded with its url and timestamp', () => {
+  const snapshot = buildSnapshot({ ...BASE, launchRecords: [HN] });
+  assert.equal(snapshot.launch.status, 'RECORDED');
+  assert.equal(snapshot.launch.surfaces.length, 1);
+  assert.equal(snapshot.launch.surfaces[0].surface, 'hacker-news');
+  assert.equal(snapshot.launch.surfaces[0].postedDayUtc, '2026-08-21');
+});
+
+test('two surfaces are kept apart and never pooled into one figure', () => {
+  const snapshot = buildSnapshot({ ...BASE, launchRecords: [HN, REDDIT] });
+  assert.deepEqual(snapshot.launch.surfaces.map((s) => s.surface), ['hacker-news', 'reddit-r-mcp']);
+  const text = renderSnapshot(snapshot);
+  // both appear on their own line; no combined count is offered
+  assert.match(text, /hacker-news {2}2026-08-21T04:05/);
+  assert.match(text, /reddit-r-mcp {2}2026-08-21T04:15/);
+  assert.match(text, /2 surface\(s\), reported apart/);
+});
+
+test('a malformed url or timestamp is refused, never fabricated into an event', () => {
+  assert.throws(() => parseLaunchRecords([{ ...HN, url: 'not-a-url' }]), SnapshotError);
+  assert.throws(() => parseLaunchRecords([{ ...HN, url: 'ftp://example.com/x' }]), SnapshotError);
+  assert.throws(() => parseLaunchRecords([{ ...HN, postedAt: 'sometime tuesday' }]), SnapshotError);
+  assert.throws(() => parseLaunchRecords([{ url: HN.url, postedAt: HN.postedAt }]), SnapshotError);
+  assert.throws(() => parseLaunchRecords('nope'), SnapshotError);
+});
+
+test('a duplicate surface is refused — one surface cannot be counted twice', () => {
+  assert.throws(() => parseLaunchRecords([HN, { ...HN, url: 'https://news.ycombinator.com/item?id=999' }]), SnapshotError);
+});
+
+test('rendering with launch records is stable across identical inputs', () => {
+  const once = renderSnapshot(buildSnapshot({ ...BASE, launchRecords: [HN, REDDIT] }));
+  const twice = renderSnapshot(buildSnapshot({ ...BASE, launchRecords: [HN, REDDIT] }));
+  assert.equal(once, twice);
 });
 
 test('the rendering says downloads are downloads and refuses every claim word', () => {
