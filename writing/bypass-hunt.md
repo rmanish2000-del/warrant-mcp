@@ -178,8 +178,9 @@ Properties of the architecture, not a backlog:
   list is incomplete.
 - **A global flag that takes a separate value displaces the subcommand**, so
   `git -c core.pager=cat push --force` slips a rule that denies
-  `git push --force`. Found later, by writing the spec rather than by attacking;
-  the addendum at the end says why it is open and how it is pinned.
+  `git push --force` under warrant alone. As of 2026-08-22 this route is closed
+  when dcg is layered in front of the same Claude PreToolUse surface, while
+  warrant by itself still allows it; see the addendum at the end.
 - **The hook configuration is a file in the project.** An agent with write access
   can edit it — I got a targeted `Edit` through that left it `{}`. Detection is
   possible; prevention needs org-managed settings I do not control.
@@ -280,6 +281,44 @@ workspace, with the three reds green again and the case pinned by tests. I am
 counting it out loud because catching it a day early is not luck to bury — it is
 the argument for running your own attacks, on a machine that is not yours, before
 a stranger does.
+
+## Addendum: under dcg (2026-08-22)
+
+After Dicklesworthstone (dcg, 5.8k★) said warrant alone is not enough, I said
+I would install dcg under warrant, re-run every attack, and publish the result
+including what dcg caught that we did not. This section is that run.
+
+Seat and method: Linux x86_64 sandbox; dcg installed from official
+`install.sh --easy-mode --verify --no-configure`; version `0.12.0` musl binary;
+warrant `main@462ec9b`; both invoked as Claude Code PreToolUse command hooks with
+JSON on stdin.
+
+Two previously open cases were decisive:
+
+- `rm -f *` → warrant `ALLOW` (null), dcg `ALLOW`. Still open under the
+  combination (glob class remains open).
+- `git -c core.pager=cat push --force` → warrant `ALLOW` (null, global `-c`
+  displacement), dcg `DENY core.git:push-force-long`. Closed by dcg.
+
+dcg caught something warrant missed.
+
+Previously closed cases were re-run with no regressions: `rm -rf *`, `rm -rf .env`,
+`git push --force`, `git reset --hard HEAD~5`, `sudo rm -rf /`, and `curl|bash`
+were denied by both layers. `rm -f .env`, `mv .env /tmp/`, and
+`git push --force-with-lease` remained warrant-denied only, which is expected for
+policy/intent constraints rather than pattern-only blocking.
+
+I also tested seams dcg disclosed explicitly: heredoc as `cat <<'EOF' ... rm -rf /`
+`EOF` was `ALLOW` by dcg (fail-open by design) while warrant denied on W4; the
+`bash <<EOF` form was denied by dcg; `rm -f *.env` and `rm -f ./*` were both
+allowed (same glob class).
+
+On hook order: both are Claude Code PreToolUse command hooks. Any deny vetoes.
+Order in `settings.json` is start order, not "win" order. Recommended stack:
+warrant then dcg.
+
+At the pattern layer, he is further along on this class of command-shape blocking.
+That does not make the combination a sandbox, and it does not close glob expansion.
 
 ## Try it
 
